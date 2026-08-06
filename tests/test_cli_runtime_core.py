@@ -1,0 +1,343 @@
+import unittest
+
+from mcp_package.brainhub_core.cli_runtime import (
+    render_demo_text,
+    render_init_text,
+    render_mcp_connect_text,
+    render_onboard_text,
+    render_proof_text,
+    render_start_text,
+    render_starter_prompts_text,
+    render_try_text,
+    render_welcome_text,
+)
+
+
+class CliRuntimeCoreTests(unittest.TestCase):
+    def test_render_init_text(self):
+        code, text = render_init_text(target="/tmp/link", fixes=["created wiki/index.md"])
+
+        self.assertEqual(code, 0)
+        self.assertIn("BrainHub wiki ready at /tmp/link", text)
+        self.assertIn("Initialized:", text)
+        self.assertIn("bh health /tmp/link", text)
+        self.assertIn("bh onboard /tmp/link", text)
+        self.assertIn("bh serve /tmp/link", text)
+        self.assertIn("http://127.0.0.1:3000/onboard", text)
+
+    def test_render_starter_prompts_text(self):
+        code, text = render_starter_prompts_text({
+            "target": "/tmp/link",
+            "project": "link",
+            "shortcut": "bh next /tmp/link",
+            "prompts": [{
+                "prompt": "is Link ready?",
+                "when": "first run",
+            }],
+            "commands": ["bh health"],
+        })
+
+        self.assertEqual(code, 0)
+        self.assertIn("BrainHub starter prompts: /tmp/link", text)
+        self.assertIn("Project: link", text)
+        self.assertIn("Shortcut", text)
+        self.assertIn("- bh next /tmp/link", text)
+        self.assertIn("- is Link ready?", text)
+        self.assertIn("- bh health", text)
+
+    def test_render_welcome_text(self):
+        code, text = render_welcome_text({
+            "target": "/tmp/link",
+            "project": "link",
+            "steps": [{
+                "step": 1,
+                "prompt": "is Link ready?",
+                "proves": "Agent can find Link.",
+            }],
+            "commands": ["bh health"],
+            "urls": ["http://127.0.0.1:3000/health"],
+        })
+
+        self.assertEqual(code, 0)
+        self.assertIn("BrainHub welcome: /tmp/link", text)
+        self.assertIn("Project: link", text)
+        self.assertIn("1. is Link ready?", text)
+        self.assertIn("Proves: Agent can find Link.", text)
+        self.assertIn("- bh health", text)
+        self.assertIn("- http://127.0.0.1:3000/health", text)
+
+    def test_render_start_text(self):
+        code, text = render_start_text({
+            "target": "/tmp/link",
+            "task": "release work",
+            "status": {
+                "ready": True,
+                "content_page_count": 12,
+                "page_count": 14,
+                "active_memory_count": 2,
+                "needs_review_count": 1,
+                "search_backend": "sqlite-fts",
+                "validation": {"checked": True, "passed": True},
+            },
+            "brief_text": "Link memory brief: release work\n- Prefer short release notes",
+            "commands": {
+                "query": "bh query 'release work' /tmp/link --budget micro",
+                "review": "bh memory-inbox /tmp/link",
+            },
+        })
+
+        self.assertEqual(code, 0)
+        self.assertIn("BrainHub start: /tmp/link", text)
+        self.assertIn("Ready: yes", text)
+        self.assertIn("Pages: 12 content", text)
+        self.assertIn("Link memory brief: release work", text)
+        self.assertIn("bh query", text)
+
+    def test_render_start_text_recommends_project_seed_when_context_is_empty(self):
+        code, text = render_start_text({
+            "target": "/tmp/link",
+            "task": "new repo work",
+            "status": {
+                "ready": True,
+                "content_page_count": 0,
+                "page_count": 2,
+                "active_memory_count": 0,
+                "needs_review_count": 0,
+                "search_backend": "sqlite-fts",
+                "validation": {"checked": True, "passed": True},
+            },
+            "brief_text": "Link memory brief: new repo work\nNo directly relevant memory found.",
+            "commands": {
+                "query": "bh query 'new repo work' /tmp/link --budget micro",
+                "review": "bh memory-inbox /tmp/link",
+            },
+            "project_seed": {
+                "recommended": True,
+                "command": "bh seed . /tmp/link",
+                "reason": "No source-backed project context or relevant memory found.",
+                "safety": "Run from the project repo.",
+            },
+        })
+
+        self.assertEqual(code, 0)
+        self.assertIn("Seed project context: bh seed . /tmp/link", text)
+        self.assertIn("No source-backed project context", text)
+        self.assertIn("Run from the project repo.", text)
+        self.assertLess(text.index("Seed project context"), text.index("Need more context"))
+
+    def test_render_start_text_includes_tiny_context_preview(self):
+        code, text = render_start_text({
+            "target": "/tmp/link",
+            "task": "release work",
+            "status": {
+                "ready": True,
+                "content_page_count": 3,
+                "page_count": 5,
+                "active_memory_count": 0,
+                "needs_review_count": 0,
+                "search_backend": "sqlite-fts",
+                "validation": {"checked": True, "passed": True},
+            },
+            "brief_text": "Link memory brief: release work\n- none",
+            "context_preview": {
+                "budget": "micro",
+                "recall_capsule": {
+                    "estimated_tokens": 96,
+                    "items": [{
+                        "kind": "page",
+                        "title": "Project seed: Link",
+                        "summary": "README context says Link gives agents local memory.",
+                    }],
+                },
+            },
+            "commands": {
+                "query": "bh query 'release work' /tmp/link --budget micro",
+                "review": "bh memory-inbox /tmp/link",
+            },
+        })
+
+        self.assertEqual(code, 0)
+        self.assertIn("Context preview (micro · ~96 tokens)", text)
+        self.assertIn("Project seed: Link (page)", text)
+        self.assertIn("README context says Link gives agents local memory.", text)
+
+    def test_render_demo_text(self):
+        code, text = render_demo_text(
+            target="/tmp/link-demo",
+            guide_path="/tmp/link-demo/START_HERE.md",
+            serve_command="python3 brainhub_engine.py serve /tmp/link-demo",
+            next_command="python3 brainhub_engine.py next /tmp/link-demo",
+            start_command="python3 brainhub_engine.py start /tmp/link-demo --task 'working on agent memory'",
+            query_command="python3 brainhub_engine.py query 'why does Link help agents?' /tmp/link-demo --budget small",
+            brief_command="python3 brainhub_engine.py brief 'working on agent memory' /tmp/link-demo",
+            audit_command="python3 brainhub_engine.py memory-audit /tmp/link-demo",
+        )
+
+        self.assertEqual(code, 0)
+        self.assertIn("BrainHub demo created at /tmp/link-demo", text)
+        self.assertIn("Ask an agent what to try next:", text)
+        self.assertIn("python3 brainhub_engine.py next /tmp/link-demo", text)
+        self.assertIn("Try the value loop:", text)
+        self.assertIn("python3 brainhub_engine.py start /tmp/link-demo", text)
+        self.assertIn("/tmp/link-demo/START_HERE.md", text)
+        self.assertIn("http://127.0.0.1:3000/onboard", text)
+        self.assertIn("http://127.0.0.1:3000/graph", text)
+
+    def test_render_try_text(self):
+        code, text = render_try_text(
+            target="/tmp/link-demo",
+            ready=True,
+            page_count=13,
+            memory_count=1,
+            search_backend="sqlite-fts",
+            query_summary="agent-memory · 1 memory · 3 context items",
+            brief_summary="1 relevant memory · 1 review item",
+            serve_command="bh serve /tmp/link-demo",
+            next_command="bh next /tmp/link-demo",
+            health_command="bh health /tmp/link-demo",
+            query_command="bh query 'why does Link help agents?' /tmp/link-demo --budget small",
+            brief_command="bh brief 'working on agent memory' /tmp/link-demo",
+            benchmark_command="bh benchmark 'agent memory' /tmp/link-demo",
+            url="http://127.0.0.1:3000",
+        )
+
+        self.assertEqual(code, 0)
+        self.assertIn("BrainHub try: /tmp/link-demo", text)
+        self.assertIn("60-second proof complete", text)
+        self.assertIn("Status", text)
+        self.assertIn("Demo: ready", text)
+        self.assertIn("13 pages · 1 memory", text)
+        self.assertIn("Privacy: no cloud account", text)
+        self.assertIn("What BrainHub proved", text)
+        self.assertIn("Query proof:", text)
+        self.assertIn("Agent path: CLI works now", text)
+        self.assertIn("Ask an agent:", text)
+        self.assertIn("http://127.0.0.1:3000/onboard", text)
+        self.assertIn("bh next /tmp/link-demo", text)
+
+    def test_render_proof_text(self):
+        code, text = render_proof_text({
+            "target": "/tmp/link-proof",
+            "created": True,
+            "ready": True,
+            "memory": {
+                "created": True,
+                "reviewed": True,
+                "title": "Cross-agent Link proof",
+            },
+            "recall": {"found": True},
+            "prompts": {
+                "agent_a": "remember that I want Link memory shared across my local agents",
+                "agent_b": "start with Link before we continue",
+            },
+            "commands": {
+                "start": "bh start /tmp/link-proof --task 'cross-agent proof'",
+                "recall": "bh query 'cross-agent proof local memory' /tmp/link-proof --budget micro",
+                "mcp": "bh connect codex /tmp/link-proof",
+                "serve": "bh serve /tmp/link-proof --port 3000",
+            },
+        })
+
+        self.assertEqual(code, 0)
+        self.assertIn("Cross-agent memory continuity works", text)
+        self.assertIn("throwaway demo wiki", text)
+        self.assertIn("What this means for you", text)
+        self.assertIn("Memory: created and reviewed", text)
+        self.assertIn("same bounded recall path used by CLI, skills, and MCP", text)
+        self.assertIn("Try it with two agents", text)
+        self.assertIn("No viewer required", text)
+        self.assertIn("Result: proof passed", text)
+
+    def test_render_onboard_text_preview(self):
+        code, text = render_onboard_text({
+            "target": "/tmp/link",
+            "created": True,
+            "fixes": ["created wiki/index.md"],
+            "status": {
+                "ready": True,
+                "content_page_count": 0,
+                "memory_count": 1,
+            },
+            "first_memory": {
+                "created": True,
+                "path": "wiki/memories/prefer-local-memory.md",
+            },
+            "connections": [{
+                "display_name": "Codex",
+                "config_path": "/tmp/config.toml",
+                "restart_hint": "Restart Codex, then ask: is Link ready?",
+                "write": {"requested": False, "ok": False},
+                "next_actions": [{
+                    "label": "write config",
+                    "command_text": "bh connect codex /tmp/link --write",
+                }],
+            }],
+            "prompts": [
+                {"prompt": "is Link ready?"},
+                {"prompt": "start with Link before we continue"},
+            ],
+            "commands": {
+                "health": "bh health /tmp/link",
+                "serve": "bh serve /tmp/link --port 3000",
+                "memory_inbox": "bh memory-inbox /tmp/link",
+                "ingest_status": "bh ingest-status /tmp/link",
+            },
+            "agent_examples": [],
+            "url": "http://127.0.0.1:3000",
+        })
+
+        self.assertEqual(code, 0)
+        self.assertIn("BrainHub onboard: /tmp/link", text)
+        self.assertIn("Workspace", text)
+        self.assertIn("saved for review", text)
+        self.assertIn("Codex: preview", text)
+        self.assertIn("Write when ready: bh connect codex /tmp/link --write", text)
+        self.assertIn("After writing: Restart Codex", text)
+        self.assertIn("is Link ready?", text)
+        self.assertIn("bh serve /tmp/link --port 3000", text)
+
+    def test_render_onboard_write_without_agent_is_actionable_error(self):
+        code, text = render_onboard_text({
+            "target": "/tmp/link",
+            "created": False,
+            "status": {
+                "ready": True,
+                "content_page_count": 0,
+                "memory_count": 0,
+            },
+            "write_requested": True,
+            "connections": [],
+            "prompts": [],
+            "commands": {},
+            "agent_examples": ["bh onboard /tmp/link --agent codex"],
+        })
+
+        self.assertEqual(code, 1)
+        self.assertIn("no agent selected", text)
+        self.assertIn("--agent codex", text)
+
+    def test_render_mcp_connect_text_preview(self):
+        code, text = render_mcp_connect_text({
+            "display_name": "Codex",
+            "wiki": "/tmp/link/wiki",
+            "python": "/tmp/python",
+            "config_path": "/tmp/config.toml",
+            "snippet": "[mcp_servers.link]\ncommand = \"/tmp/python\"",
+            "write": {"requested": False, "ok": False, "message": "preview only"},
+            "next_actions": [
+                {"label": "write config", "command_text": "bh connect codex /tmp/link --write"},
+                {"label": "verify MCP runtime", "command_text": "bh verify-mcp /tmp/link --python /tmp/python"},
+            ],
+            "restart_hint": "Restart the agent, then ask: is Link ready?",
+        })
+
+        self.assertEqual(code, 0)
+        self.assertIn("BrainHub connect: Codex", text)
+        self.assertIn("Preview only", text)
+        self.assertIn("bh connect codex /tmp/link --write", text)
+        self.assertIn("[mcp_servers.link]", text)
+        self.assertIn("bh verify-mcp /tmp/link --python /tmp/python", text)
+
+
+if __name__ == "__main__":
+    unittest.main()

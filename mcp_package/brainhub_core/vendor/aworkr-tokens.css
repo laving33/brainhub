@@ -1,0 +1,100 @@
+/* ===========================================================================
+   VENDORED into brainhub — Aworkr Design Tokens
+   ---------------------------------------------------------------------------
+   為什麼是副本而不是跨 repo 引用：
+   BrainHub 是獨立產品線，會被裝到別人的機器上（owner 2026-07-21 裁）。那些機器上
+   沒有 aworkr 的 core/library/brand/ ⇒ 執行期一律讀這個檔，永遠不引用外部路徑。
+   此檔即本產品執行期的品牌 token 真相。
+
+   上游 SSOT（只存在於 aworkr 自家 repo；外部安裝沒有也不需要）：
+     core/library/brand/assets/tokens/tokens.css
+   偏移檢查：tests/test_brand_assets.py（SSOT 不在時 skip，不會 fail）
+   ⚠ 別在這裡就地編輯——改上游再同步，否則下次同步你的改動會被蓋掉。
+
+   本檔＝上述 header ＋ 上游檔案逐位元組原文（測試用 endswith 驗）。
+   =========================================================================== */
+/* ===========================================
+   Aworkr Design Tokens · v1.1 · Baseline 2026.05
+   品牌識別 SSOT（單一真相來源）— 官網與 sales kit 共用。
+   來源：design-system.html v2.3。識別規範見 ../../CIS.md。
+   工程鐵則：元件 CSS 只能用 L4 語意 token（var(--color-*)），禁寫死 hex。
+   =========================================== */
+:root {
+  /* ── L1 Primitive · 8 品牌原色（凍結，勿改）── */
+  --brand-midnight:       #0A0A1E;   /* 沉睡之夜 · 主品牌色 */
+  --brand-deep-sleep:     #1A1A2E;   /* 更深的沉睡 · 卡片內層 */
+  --brand-dawn-gold:      #FFD166;   /* 第一道光 · 主 CTA */
+  --brand-sunrise-orange: #FF8C42;   /* 太陽升起 · hover */
+  --brand-quiet-gray:     #8B8B9A;   /* 黎明前的灰 · 次要文字 */
+  --brand-white:          #FFFFFF;
+  --brand-soft-light:     #FFF3D6;   /* 晨間餘溫 · 溫暖提示底 */
+  --brand-section-bg:     #FAFAF7;   /* 紙頁米白 · 整頁底層 */
+
+  /* ── 吉祥物光球專用（orb-engine.js 凍結色，列此供其他用途取用）── */
+  --orb-awake-light:      #FFE9A8;   /* 光球核心高光 */
+  --orb-info-blue:        #7FB2FF;   /* 僅限資料類圖示（圖表），不得他用 */
+
+  /* ── L2 Derived · 6 衍生色 ── */
+  --derived-on-light-gold:    #8a6b1f;  /* WCAG 4.53:1 on soft-light */
+  --derived-on-light-orange:  #b25e1f;  /* WCAG 4.65:1 on white */
+  --derived-border:           #E8E8E0;
+  --derived-border-strong:    #C8C8BC;
+  --derived-disabled-bg:      #EFEFE8;
+  --derived-disabled-text:    #B8B8AE;
+
+  /* ── L3 Third-party · LINE 綠（隔離，不污染品牌）── */
+  --third-line-green:       #06C755;
+  --third-line-green-hover: #05b34c;
+
+  /* ── L4 Semantic · 元件用這層 ── */
+  /* 文字 */
+  --color-text:                var(--brand-midnight);
+  --color-text-muted:          var(--brand-quiet-gray);
+  --color-text-inverse:        var(--brand-white);
+  --color-text-on-light-gold:  var(--derived-on-light-gold);
+  --color-text-on-light-orange:var(--derived-on-light-orange);
+  /* 背景 */
+  --color-bg:          var(--brand-white);
+  --color-bg-section:  var(--brand-section-bg);
+  --color-bg-soft:     var(--brand-soft-light);
+  --color-bg-dark:     var(--brand-midnight);
+  /* 強調 */
+  --color-accent:       var(--brand-dawn-gold);
+  --color-accent-hover: var(--brand-sunrise-orange);
+  --color-focus-ring:   rgba(255, 209, 102, 0.45);
+  /* 邊框 */
+  --color-border:        var(--derived-border);
+  --color-border-strong: var(--derived-border-strong);
+  /* 禁用 */
+  --color-disabled-bg:   var(--derived-disabled-bg);
+  --color-disabled-text: var(--derived-disabled-text);
+
+  /* ── 字體 ── */
+  --font-sans: "Inter", "Noto Sans TC", -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+  /* 字重（一律 Light 為主，絕不 Bold 700+ 作正文） */
+  --fw-light: 300; --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+  /* 字級 */
+  --fs-h1: clamp(2rem, 5vw, 3.5rem);
+  --fs-h2: clamp(1.5rem, 3.5vw, 2.25rem);
+  --fs-h3: clamp(1.25rem, 2.5vw, 1.5rem);
+  --fs-h4: 1.125rem; --fs-h5: 1rem;
+  --fs-body: 1rem; --fs-body-sm: 0.9375rem; --fs-caption: 0.75rem;
+  /* 行高 */
+  --lh-tight: 1.2; --lh-snug: 1.4; --lh-normal: 1.6; --lh-relaxed: 1.75;
+  /* 字距 */
+  --tracking-eyebrow: 0.12em; --tracking-wide: 0.05em;
+
+  /* ── 間距 ── */
+  --space-1: 4px; --space-2: 8px; --space-3: 16px; --space-4: 24px; --space-5: 32px;
+  --space-6: 48px; --space-7: 64px; --space-8: 96px; --space-9: 120px;
+
+  /* ── 圓角 ── */
+  --radius-xs: 4px; --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 24px; --radius-full: 999px;
+
+  /* ── 陰影 ── */
+  --shadow-sm: 0 1px 2px rgba(10,10,30,0.04), 0 1px 3px rgba(10,10,30,0.06);
+  --shadow-md: 0 4px 12px rgba(10,10,30,0.06), 0 2px 4px rgba(10,10,30,0.04);
+  --shadow-lg: 0 12px 32px rgba(10,10,30,0.10), 0 4px 8px rgba(10,10,30,0.06);
+  --shadow-dawn-glow: 0 0 0 1px rgba(255,209,102,0.35), 0 4px 16px rgba(255,209,102,0.15);
+}

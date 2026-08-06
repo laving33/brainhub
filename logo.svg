@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">BrainHub logo</title>
+  <desc id="desc">A knowledge-graph mark: satellite nodes linked into a central hub, with a gold hub node.</desc>
+  <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="14" fill="#faf9f5" stroke="#221c12" stroke-opacity="0.10" stroke-width="1.5"/>
+  <g stroke="#221c12" stroke-width="1.7" stroke-linecap="round">
+    <line x1="32" y1="32" x2="32" y2="15"/>
+    <line x1="32" y1="32" x2="18" y2="22"/>
+    <line x1="32" y1="32" x2="46" y2="22"/>
+    <line x1="32" y1="32" x2="17" y2="41"/>
+    <line x1="32" y1="32" x2="47" y2="41"/>
+  </g>
+  <circle cx="32" cy="15" r="3.4" fill="#faf9f5" stroke="#221c12" stroke-width="1.6"/>
+  <circle cx="18" cy="22" r="2.6" fill="#221c12"/>
+  <circle cx="46" cy="22" r="2.6" fill="#221c12"/>
+  <circle cx="17" cy="41" r="2.6" fill="#221c12"/>
+  <circle cx="47" cy="41" r="2.6" fill="#221c12"/>
+  <circle cx="32" cy="32" r="5.4" fill="#F9C157" stroke="#221c12" stroke-width="1.6"/>
+</svg>

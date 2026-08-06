@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "brainhub-mcp"
+version = "1.6.0"
+description = "BrainHub local MCP server — memory, context, and graph traversal for agent teams"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+# markdown-it-py + plugins render page bodies. They are required, not optional:
+# the previous hand-written subset renderer silently dropped standard constructs
+# (an image produced nothing), which is what pushed authors into pasting raw
+# HTML instead. linkify-it-py backs the autolink rule.
+dependencies = [
+    "mcp>=1.0.0",
+    "markdown-it-py>=3.0",
+    "mdit-py-plugins>=0.4",
+    "linkify-it-py>=2.0",
+]
+keywords = ["mcp", "memory", "knowledge-base", "wiki", "llm", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+# fontTools subsets the CJK face into print output. It was used without ever
+# being declared, so a clean install produced A4 documents with no CJK font
+# embedded — invisible to whoever rendered them (their machine has system CJK
+# fonts) and visible only to the client opening the file. Declared as an extra
+# rather than a hard dependency because installs that never render print output
+# do not need it; the renderer warns loudly when it is missing and needed.
+print = ["fonttools>=4.0", "brotli>=1.0"]
+semantic = ["model2vec>=0.3"]
+semantic-quality = ["fastembed>=0.5"]
+
+[project.scripts]
+brainhub-mcp = "brainhub_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["brainhub_mcp", "brainhub_core"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".mcpregistry_*",
+    ".env",
+    ".env.*",
+    "*.token",
+    "*.key",
+    "*.pem",
+    "*.p8",
+    "*.p12",
+    "id_rsa",
+    "id_ed25519",
+    "dist/",
+]
