@@ -47,6 +47,18 @@ fail() { echo "GATE FAILED: $1" >&2; exit 1; }
 find "$STAGE/$NAME" -name 'aworkr-logo-*' | grep -q . && fail "aworkr logo leaked"
 [ -f "$STAGE/$NAME/wire-artifact-intercept.py" ] && fail "fleet hook installer leaked"
 [ -f "$STAGE/$NAME/mcp_package/brainhub_core/vendor/brand-logo.svg" ] || fail "neutral brand-logo.svg missing"
+# The CJK face must ship. Its absence is not a degraded install, it is a silent
+# data defect: Chinese documents fall back to the reader's fonts, CJK bold stops
+# working, and the PDF text layer records whatever codepoint the substituted glyph
+# was reachable by (Kangxi Radicals in the reported case) — so the page looks
+# perfect and the client cannot search it. Refuse to build rather than ship that.
+CJK_FACE="$STAGE/$NAME/mcp_package/brainhub_core/vendor/NotoSansCJKtc-subset.woff2"
+[ -f "$CJK_FACE" ] || fail "vendored CJK face missing (rebuild: scripts/build_cjk_subset.py)"
+[ "$(stat -c%s "$CJK_FACE" 2>/dev/null || stat -f%z "$CJK_FACE")" -gt 5000000 ] \
+  || fail "vendored CJK face is implausibly small — a truncated or placeholder file"
+# The OFL requires the licence to travel with the font.
+[ -f "$STAGE/$NAME/mcp_package/brainhub_core/vendor/NotoSansCJKtc-subset.LICENSE.txt" ] \
+  || fail "vendored CJK face shipped without its OFL licence"
 # Upstream identity may live ONLY in LICENSE, the branding guard, and this
 # script (all three must name the token to check for it — the classic
 # "grep counts its own pattern" self-match).

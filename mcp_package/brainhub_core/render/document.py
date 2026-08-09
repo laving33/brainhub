@@ -34,6 +34,7 @@ import os
 import re
 from pathlib import Path
 
+from .. import brand as _brand
 from ..web_assets import BRAND_TOKENS_CSS, CSS, THEME_INIT_JS
 
 # brainhub_core/ directory (this file is brainhub_core/render/document.py).
@@ -317,21 +318,19 @@ def _strip_svg_xmlns(svg: str) -> str:
 def _load_logo_svg() -> str:
     """Inline the brand logo from disk — never fetched, import-time safe.
 
-    White-label resolution order:
-    1. ``BRAINHUB_BRAND_LOGO`` env var — path to an SVG file.
-    2. ``vendor/brand-logo.svg`` — a deployment's drop-in brand file (absent in
+    Resolution order:
+    1. A brand pack's ``logo.svg`` (``BRAINHUB_BRAND_DIR``) — the one place a
+       deployment sets its whole corporate identity; see ``brand.py``.
+    2. ``BRAINHUB_BRAND_LOGO`` env var — the older single-asset override.
+    3. ``vendor/brand-logo.svg`` — a deployment's drop-in brand file (absent in
        this source tree, shipped as a neutral BrainHub mark in the distributed
        package).
-    3. Vendored aworkr lockups — the aworkr-node default, excluded from the
-       distributed package.
-    4. Empty string — the header renders without a logo, nothing errors.
+    4. Vendored aworkr lockups — the bundled theme's default.
+    5. Empty string — the header renders without a logo, nothing errors.
     """
-    override = os.environ.get("BRAINHUB_BRAND_LOGO", "")
-    if override:
-        try:
-            return _strip_svg_xmlns(Path(override).expanduser().read_text(encoding="utf-8"))
-        except OSError:
-            pass
+    override = _brand.text_asset(_brand.LOGO_ASSET, _brand.LOGO_ENV)
+    if override is not None:
+        return _strip_svg_xmlns(override)
     for name in ("brand-logo.svg", "aworkr-logo-wordmark.svg", "aworkr-logo-primary.svg"):
         try:
             return _strip_svg_xmlns(read_vendor(name))

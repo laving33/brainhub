@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import sys
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -17,6 +18,9 @@ from mcp_package.brainhub_core.render.markdown_doc import render_markdown_file
 from mcp_package.brainhub_core.artifacts import (
     ARTIFACT_DIRECTORIES,
     artifact_catalog as _core_artifact_catalog,
+    artifact_store_problem as _core_artifact_store_problem,
+    ensure_standalone_html as _core_ensure_standalone_html,
+    is_standalone_html as _core_is_standalone_html,
     backfill_artifact_sids as _core_backfill_artifact_sids,
     existing_artifact_sids as _core_existing_artifact_sids,
 )
@@ -143,8 +147,9 @@ def add_artifact(
     destination_dir = workspace / ARTIFACT_DIRECTORIES[kind]
     if not source.is_file():
         raise ValueError(f"Artifact source is not a file: {source}")
-    if not destination_dir.is_dir():
-        raise ValueError(f"BrainHub workspace is not initialized: {workspace}")
+    problem = _core_artifact_store_problem(workspace, kind)
+    if problem:
+        raise ValueError(problem)
 
     destination = destination_dir / source.name
     if destination.exists():
@@ -165,6 +170,52 @@ def add_artifact(
     metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     print(f"Stored {kind} artifact: {destination}")
     return 0
+
+
+def capture_artifact(
+    source: Path,
+    workspace: Path,
+    *,
+    kind: str,
+    task: str,
+    agent: str,
+    related: list[str],
+    name: str | None = None,
+    title: str = "",
+) -> int:
+    """Store an agent-produced page, making it a standalone document first.
+
+    ``add`` copies bytes verbatim, which is right for a file that is already a
+    document. A page an agent just wrote often is not: the surface that rendered it
+    supplied the ``<html>``/``<head>`` shell, so the file on its own has no doctype
+    and opens in quirks mode, with its ``<title>`` stranded in the body. This
+    normalizes that, then hands off to ``add`` so provenance — sid, sha256, task,
+    agent — is recorded by exactly one code path.
+    """
+    source = source.expanduser().resolve()
+    if not source.is_file():
+        raise ValueError(f"Artifact source is not a file: {source}")
+    problem = _core_artifact_store_problem(workspace.expanduser().resolve(), kind)
+    if problem:
+        raise ValueError(problem)
+
+    text = source.read_text(encoding="utf-8", errors="replace")
+    document = _core_ensure_standalone_html(text, title=title or source.stem)
+    stored_name = name or source.name
+    if not stored_name.lower().endswith((".html", ".htm")):
+        stored_name += ".html"
+
+    if _core_is_standalone_html(text) and stored_name == source.name:
+        print(f"Already a standalone document: {source.name}")
+        return add_artifact(source, workspace, kind=kind, task=task, agent=agent, related=related)
+
+    # Stage under the final name so the stored artifact and its provenance record
+    # agree on it; add_artifact keys the record off the file it is given.
+    with tempfile.TemporaryDirectory(prefix="brainhub-capture-") as staging:
+        staged = Path(staging) / stored_name
+        staged.write_text(document, encoding="utf-8")
+        print(f"Wrapped fragment into a standalone document: {stored_name}")
+        return add_artifact(staged, workspace, kind=kind, task=task, agent=agent, related=related)
 
 
 def update_artifact(
@@ -188,8 +239,9 @@ def update_artifact(
     destination_dir = workspace / ARTIFACT_DIRECTORIES[kind]
     if not source.is_file():
         raise ValueError(f"Artifact source is not a file: {source}")
-    if not destination_dir.is_dir():
-        raise ValueError(f"BrainHub workspace is not initialized: {workspace}")
+    problem = _core_artifact_store_problem(workspace, kind)
+    if problem:
+        raise ValueError(problem)
 
     destination = destination_dir / (name or source.name)
     if not destination.exists():
@@ -494,6 +546,18 @@ def build_parser() -> argparse.ArgumentParser:
     artifact_update.add_argument("--task", help="override the recorded task; kept as-is when omitted")
     artifact_update.add_argument("--agent", help="override the recorded agent; kept as-is when omitted")
     artifact_update.add_argument("--related", action="append", default=[], help="replace the related list; repeatable")
+    artifact_capture = artifact_subparsers.add_parser(
+        "capture",
+        help="store an agent-produced page, wrapping a bare fragment into a standalone document first",
+    )
+    artifact_capture.add_argument("source", type=Path)
+    artifact_capture.add_argument("workspace", nargs="?", type=Path, default=default_workspace())
+    artifact_capture.add_argument("--kind", choices=("html", "report"), default="html")
+    artifact_capture.add_argument("--task", required=True, help="what this page was produced for")
+    artifact_capture.add_argument("--agent", required=True, help="who produced it")
+    artifact_capture.add_argument("--name", help="stored filename; defaults to the source filename")
+    artifact_capture.add_argument("--title", default="", help="document title used only when the page has none")
+    artifact_capture.add_argument("--related", action="append", default=[], help="related BrainHub knowledge or wiki path; repeatable")
     artifact_list = artifact_subparsers.add_parser("list", help="list stored artifact records")
     artifact_list.add_argument("workspace", nargs="?", type=Path, default=default_workspace())
     artifact_list.add_argument("--kind", choices=tuple(ARTIFACT_DIRECTORIES))
@@ -714,6 +778,17 @@ def _dispatch(args: argparse.Namespace) -> int:
             task=args.task,
             agent=args.agent,
             related=args.related,
+        )
+    if args.command == "artifact" and args.artifact_command == "capture":
+        return capture_artifact(
+            args.source,
+            args.workspace,
+            kind=args.kind,
+            task=args.task,
+            agent=args.agent,
+            related=args.related,
+            name=args.name,
+            title=args.title,
         )
     if args.command == "artifact" and args.artifact_command == "update":
         return update_artifact(

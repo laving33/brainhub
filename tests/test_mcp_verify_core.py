@@ -10,13 +10,13 @@ from mcp_package.brainhub_core.mcp_verify import (
     mcp_verify_guidance,
     resolve_mcp_python,
     render_mcp_verify_text,
-    set_link_command_override,
+    set_bh_command_override,
 )
 
 
 class McpVerifyCoreTests(unittest.TestCase):
     def tearDown(self):
-        set_link_command_override(None)
+        set_bh_command_override(None)
 
     def test_guidance_reports_missing_sdk_and_version_mismatch(self):
         issues, actions = mcp_verify_guidance(
@@ -84,19 +84,19 @@ class McpVerifyCoreTests(unittest.TestCase):
         self.assertIn("pip", text)
 
     def test_display_command_uses_non_conflicting_default_link_command(self):
-        text = display_command(["link", "health", "/tmp/link"])
+        text = display_command(["bh", "health", "/tmp/link"])
 
         self.assertEqual(text, "bh health /tmp/link")
 
     def test_display_command_can_use_source_checkout_command(self):
-        set_link_command_override(["python3", "/repo/brainhub_engine.py"])
+        set_bh_command_override(["python3", "/repo/brainhub_engine.py"])
 
-        text = display_command(["link", "health", "/tmp/link"])
+        text = display_command(["bh", "health", "/tmp/link"])
 
         self.assertEqual(text, "python3 /repo/brainhub_engine.py health /tmp/link")
 
     def test_display_command_rewrites_bh_when_source_checkout_command_is_set(self):
-        set_link_command_override(["python3", "/repo/brainhub_engine.py"])
+        set_bh_command_override(["python3", "/repo/brainhub_engine.py"])
 
         text = display_command(["bh", "doctor", "/tmp/link"])
 

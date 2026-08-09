@@ -1,13 +1,13 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "aworkr.internal/brainhub",
+  "name": "46m.internal/bh",
   "description": "BrainHub local MCP server — internal package for memory, context, graph traversal, and artifact provenance.",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "brainhub-mcp",
-      "version": "1.6.0",
+      "version": "2.0.0",
       "transport": {
         "type": "stdio"
       }

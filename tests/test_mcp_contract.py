@@ -235,7 +235,7 @@ class McpContractTests(unittest.TestCase):
         payload = json.loads(self.server.link_status(include_validation=True))
 
         self.assertTrue(payload["ready"])
-        self.assertEqual(payload["version"], self.server.LINK_VERSION)
+        self.assertEqual(payload["version"], self.server.BRAINHUB_VERSION)
         self.assertEqual(payload["page_count"], 16)
         self.assertEqual(payload["content_page_count"], 14)
         self.assertEqual(payload["memory_count"], 4)

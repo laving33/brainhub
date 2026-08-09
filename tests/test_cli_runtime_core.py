@@ -322,7 +322,7 @@ class CliRuntimeCoreTests(unittest.TestCase):
             "wiki": "/tmp/link/wiki",
             "python": "/tmp/python",
             "config_path": "/tmp/config.toml",
-            "snippet": "[mcp_servers.link]\ncommand = \"/tmp/python\"",
+            "snippet": "[mcp_servers.46m-bh]\ncommand = \"/tmp/python\"",
             "write": {"requested": False, "ok": False, "message": "preview only"},
             "next_actions": [
                 {"label": "write config", "command_text": "bh connect codex /tmp/link --write"},
@@ -335,7 +335,7 @@ class CliRuntimeCoreTests(unittest.TestCase):
         self.assertIn("BrainHub connect: Codex", text)
         self.assertIn("Preview only", text)
         self.assertIn("bh connect codex /tmp/link --write", text)
-        self.assertIn("[mcp_servers.link]", text)
+        self.assertIn("[mcp_servers.46m-bh]", text)
         self.assertIn("bh verify-mcp /tmp/link --python /tmp/python", text)
 
 

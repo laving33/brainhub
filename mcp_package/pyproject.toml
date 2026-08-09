@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "brainhub-mcp"
-version = "1.6.0"
+version = "2.0.0"
 description = "BrainHub local MCP server — memory, context, and graph traversal for agent teams"
 readme = "README.md"
 license = { text = "MIT" }
@@ -18,6 +18,14 @@ dependencies = [
     "markdown-it-py>=3.0",
     "mdit-py-plugins>=0.4",
     "linkify-it-py>=2.0",
+    # Not optional. These subset the vendored CJK face down to the characters a
+    # document actually uses; without them the renderer still embeds a CJK face
+    # (the whole vendored one), but every document carries ~5 MB of font instead
+    # of ~10 KB. They were an extra once, and a clean install therefore produced
+    # Chinese PDFs whose text layer could not be searched -- invisible to whoever
+    # rendered them, visible only to the client opening the file.
+    "fonttools>=4.0",
+    "brotli>=1.0",
 ]
 keywords = ["mcp", "memory", "knowledge-base", "wiki", "llm", "ai"]
 classifiers = [
@@ -34,13 +42,9 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-# fontTools subsets the CJK face into print output. It was used without ever
-# being declared, so a clean install produced A4 documents with no CJK font
-# embedded — invisible to whoever rendered them (their machine has system CJK
-# fonts) and visible only to the client opening the file. Declared as an extra
-# rather than a hard dependency because installs that never render print output
-# do not need it; the renderer warns loudly when it is missing and needed.
-print = ["fonttools>=4.0", "brotli>=1.0"]
+# `print` is kept as an alias so `pip install brainhub-mcp[print]` still resolves
+# for anyone whose scripts pin it; fonttools/brotli are hard dependencies now.
+print = []
 semantic = ["model2vec>=0.3"]
 semantic-quality = ["fastembed>=0.5"]
 

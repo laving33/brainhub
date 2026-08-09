@@ -30,8 +30,8 @@ from pathlib import Path
 from .files import atomic_write_text
 
 DEFAULT_SEMANTIC_MODEL = "minishlab/potion-base-8M"
-SEMANTIC_MODEL_ENV = "LINK_SEMANTIC_MODEL"
-SEMANTIC_DISABLE_ENV = "LINK_SEMANTIC"
+SEMANTIC_MODEL_ENV = "BRAINHUB_SEMANTIC_MODEL"
+SEMANTIC_DISABLE_ENV = "BRAINHUB_SEMANTIC"
 SEMANTIC_INDEX_VERSION = 1
 
 # Absolute cosine values from small static-embedding models are not
@@ -58,7 +58,7 @@ _MODEL_CACHE: dict[str, object] = {}
 #   MCP server. Preferred automatically when installed.
 # - "model2vec" (fast): tiny static embeddings. ~100 ms load, ideal for
 #   short-lived CLI calls and session-start hooks.
-SEMANTIC_PROVIDER_ENV = "LINK_SEMANTIC_PROVIDER"
+SEMANTIC_PROVIDER_ENV = "BRAINHUB_SEMANTIC_PROVIDER"
 DEFAULT_FASTEMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 

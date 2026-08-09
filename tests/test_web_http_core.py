@@ -1,5 +1,7 @@
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -8,13 +10,20 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "mcp_package"))
 
 from brainhub_core.web_http import (  # noqa: E402
+    ACCEPT_BACKLOG_ENV,
     BROWSER_SOURCE_LOCAL_ONLY,
+    BoundedThreadPoolTCPServer,
     CONTENT_SECURITY_POLICY,
     HOST_HEADER_LOCAL_ONLY,
     HOST_HEADER_REQUIRED,
+    KEEPALIVE_IDLE_TIMEOUT_ENV,
     LocalRateLimiter,
+    MAX_WORKERS_ENV,
     PERMISSIONS_POLICY,
+    REQUEST_TIMEOUT_ENV,
     SVG_CONTENT_SECURITY_POLICY,
+    ViewerTransportConfig,
+    env_bounded_int,
     is_allowed_static_file,
     local_no_store_headers,
     local_security_headers,
@@ -140,6 +149,123 @@ class WebHttpCoreTests(unittest.TestCase):
 
     def test_safe_resolve_handles_malformed_paths(self):
         self.assertIsNone(safe_resolve(Path("bad\0path")))
+
+
+class ViewerTransportConfigTests(unittest.TestCase):
+    def test_defaults_are_sized_for_many_simultaneous_readers(self):
+        config = ViewerTransportConfig()
+        # socketserver's default backlog of 5 overflows almost immediately, and an
+        # overflowed accept queue means dropped SYNs, not an HTTP error.
+        self.assertGreaterEqual(config.accept_backlog, 128)
+        self.assertGreaterEqual(config.max_workers, 1)
+        self.assertGreaterEqual(config.request_timeout_seconds, 1)
+        self.assertGreaterEqual(config.keepalive_idle_timeout_seconds, 1)
+
+    def test_every_knob_is_env_overridable(self):
+        config = ViewerTransportConfig.from_env({
+            ACCEPT_BACKLOG_ENV: "64",
+            MAX_WORKERS_ENV: "8",
+            REQUEST_TIMEOUT_ENV: "20",
+            KEEPALIVE_IDLE_TIMEOUT_ENV: "3",
+        })
+        self.assertEqual(config.accept_backlog, 64)
+        self.assertEqual(config.max_workers, 8)
+        self.assertEqual(config.request_timeout_seconds, 20)
+        self.assertEqual(config.keepalive_idle_timeout_seconds, 3)
+
+    def test_from_env_falls_back_to_defaults_when_unset(self):
+        self.assertEqual(ViewerTransportConfig.from_env({}), ViewerTransportConfig())
+
+    def test_env_bounded_int_prefers_a_working_default_over_failing(self):
+        """A typo in a deployment env var should not stop the viewer from booting."""
+        for bad in ("", "   ", "not-a-number", "0", "-5", "1.5"):
+            with self.subTest(raw=bad):
+                self.assertEqual(
+                    env_bounded_int("X", 64, 1, 4096, {"X": bad}), 64, f"{bad!r} should fall back"
+                )
+        self.assertEqual(env_bounded_int("X", 64, 1, 4096, {"X": "8"}), 8)
+        # Above the ceiling clamps rather than failing: the kernel would clamp an
+        # oversized backlog anyway.
+        self.assertEqual(env_bounded_int("X", 64, 1, 100, {"X": "9999"}), 100)
+
+
+class BoundedThreadPoolTCPServerTests(unittest.TestCase):
+    """Behaviour of the pool itself, without going through HTTP.
+
+    A fake handler stands in for finish_request so these stay fast and
+    deterministic; the socket is real but nothing is ever accepted on it.
+    """
+
+    def _server(self, **transport_kwargs):
+        transport = ViewerTransportConfig(**transport_kwargs)
+
+        class _Server(BoundedThreadPoolTCPServer):
+            # Bind only; never serve_forever, so no connection is ever accepted.
+            def __init__(self, **kwargs):
+                self.served = []
+                self.release = threading.Event()
+                self.started = threading.Semaphore(0)
+                super().__init__(("127.0.0.1", 0), None, **kwargs)
+
+            def finish_request(self, request, client_address):
+                self.started.release()
+                self.release.wait(timeout=5)
+                self.served.append(request)
+
+            def shutdown_request(self, request):
+                pass
+
+        return _Server(transport=transport)
+
+    def test_backlog_comes_from_the_transport_config(self):
+        server = self._server(accept_backlog=64)
+        try:
+            self.assertEqual(server.request_queue_size, 64)
+        finally:
+            server.release.set()
+            server.server_close()
+
+    def test_worker_count_never_exceeds_the_ceiling(self):
+        server = self._server(max_workers=3)
+        try:
+            for index in range(10):
+                server.process_request(index, ("127.0.0.1", 1000 + index))
+            # Let the three workers reach finish_request before counting them.
+            for _ in range(3):
+                self.assertTrue(server.started.acquire(timeout=5), "worker did not start")
+            self.assertEqual(server._worker_count, 3, "pool grew past max_workers")
+        finally:
+            server.release.set()
+            server.server_close()
+
+    def test_every_queued_connection_is_still_served_when_saturated(self):
+        """Oversubscription must queue, not drop: 10 connections through 2 workers."""
+        server = self._server(max_workers=2)
+        server.release.set()
+        try:
+            for index in range(10):
+                server.process_request(index, ("127.0.0.1", 1000 + index))
+            deadline = time.monotonic() + 5
+            while len(server.served) < 10 and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertEqual(sorted(server.served), list(range(10)))
+        finally:
+            server.server_close()
+
+    def test_expected_disconnects_do_not_raise_to_the_console(self):
+        """Closed tabs and lapsed keep-alives are normal, not errors worth logging."""
+        server = self._server()
+        server.release.set()
+        try:
+            for quiet in (BrokenPipeError, ConnectionResetError, TimeoutError):
+                with self.subTest(error=quiet.__name__):
+                    try:
+                        raise quiet()
+                    except quiet:
+                        # Returns without delegating to the noisy stdlib handler.
+                        self.assertIsNone(server.handle_error(None, ("127.0.0.1", 1)))
+        finally:
+            server.server_close()
 
 
 if __name__ == "__main__":

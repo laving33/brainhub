@@ -655,7 +655,7 @@ class LinkCliTests(unittest.TestCase):
             code = engine_cli.status(target, include_validation=True)
 
         self.assertEqual(code, 0)
-        self.assertIn(f"Version: {engine_cli.LINK_VERSION}", out.getvalue())
+        self.assertIn(f"Version: {engine_cli.BRAINHUB_VERSION}", out.getvalue())
         self.assertIn("Ready: yes", out.getvalue())
         self.assertIn("Content pages:", out.getvalue())
         self.assertIn("Schema: current", out.getvalue())
@@ -669,7 +669,7 @@ class LinkCliTests(unittest.TestCase):
             json_code = engine_cli.status(target, include_validation=True, json_output=True)
         self.assertEqual(json_code, 0)
         status_payload = json.loads(json_out.getvalue())
-        self.assertEqual(status_payload["version"], engine_cli.LINK_VERSION)
+        self.assertEqual(status_payload["version"], engine_cli.BRAINHUB_VERSION)
         self.assertGreater(status_payload["content_page_count"], 0)
 
     def test_status_guides_empty_initialized_wiki_to_project_seed(self):
@@ -786,7 +786,7 @@ class LinkCliTests(unittest.TestCase):
         target = tmp / "my-link"
         payload = {
             "ready": False,
-            "version": engine_cli.LINK_VERSION,
+            "version": engine_cli.BRAINHUB_VERSION,
             "wiki": str(target / "wiki"),
             "missing": [],
             "page_count": 0,
@@ -821,7 +821,7 @@ class LinkCliTests(unittest.TestCase):
             engine_cli.main(["--version"])
 
         self.assertEqual(cm.exception.code, 0)
-        self.assertIn(f"BrainHub {engine_cli.LINK_VERSION}", out.getvalue())
+        self.assertIn(f"BrainHub {engine_cli.BRAINHUB_VERSION}", out.getvalue())
 
     def test_main_version_command_prints_version(self):
         out = StringIO()
@@ -830,7 +830,7 @@ class LinkCliTests(unittest.TestCase):
             code = engine_cli.main(["version"])
 
         self.assertEqual(code, 0)
-        self.assertIn(f"BrainHub {engine_cli.LINK_VERSION}", out.getvalue())
+        self.assertIn(f"BrainHub {engine_cli.BRAINHUB_VERSION}", out.getvalue())
 
     def test_backup_creates_local_archive_without_raw_by_default(self):
         tmp = Path(tempfile.mkdtemp(prefix="link-backup-test-"))
@@ -2186,11 +2186,11 @@ class LinkCliTests(unittest.TestCase):
             code = engine_cli.verify_mcp(
                 target,
                 python_cmd="/tmp/python",
-                import_check=lambda _: {"installed": True, "version": engine_cli.LINK_VERSION, "error": None},
+                import_check=lambda _: {"installed": True, "version": engine_cli.BRAINHUB_VERSION, "error": None},
             )
 
         self.assertEqual(code, 0)
-        self.assertIn(f"brainhub-mcp: installed ({engine_cli.LINK_VERSION})", out.getvalue())
+        self.assertIn(f"brainhub-mcp: installed ({engine_cli.BRAINHUB_VERSION})", out.getvalue())
         self.assertIn('"command": "/tmp/python"', out.getvalue())
         self.assertIn("Result: ready", out.getvalue())
 
@@ -2205,7 +2205,7 @@ class LinkCliTests(unittest.TestCase):
         with redirect_stdout(out):
             code = engine_cli.verify_mcp(
                 target,
-                import_check=lambda cmd: checked.append(cmd) or {"installed": True, "version": engine_cli.LINK_VERSION, "error": None},
+                import_check=lambda cmd: checked.append(cmd) or {"installed": True, "version": engine_cli.BRAINHUB_VERSION, "error": None},
             )
 
         self.assertEqual(code, 0)
@@ -2225,7 +2225,7 @@ class LinkCliTests(unittest.TestCase):
                 target,
                 python_cmd="/tmp/explicit-python",
                 json_output=True,
-                import_check=lambda cmd: checked.append(cmd) or {"installed": True, "version": engine_cli.LINK_VERSION, "error": None},
+                import_check=lambda cmd: checked.append(cmd) or {"installed": True, "version": engine_cli.BRAINHUB_VERSION, "error": None},
             )
 
         self.assertEqual(code, 0)
@@ -2242,18 +2242,18 @@ class LinkCliTests(unittest.TestCase):
                 target,
                 json_output=True,
                 python_cmd="/tmp/python",
-                import_check=lambda _: {"installed": True, "version": engine_cli.LINK_VERSION, "error": None},
+                import_check=lambda _: {"installed": True, "version": engine_cli.BRAINHUB_VERSION, "error": None},
             )
 
         data = json.loads(out.getvalue())
         self.assertEqual(code, 0)
         self.assertTrue(data["ready"])
-        self.assertEqual(data["expected_version"], engine_cli.LINK_VERSION)
+        self.assertEqual(data["expected_version"], engine_cli.BRAINHUB_VERSION)
         self.assertTrue(data["version_matches"])
         self.assertEqual(data["issues"], [])
         self.assertEqual(data["next_actions"], [])
         self.assertTrue(data["brainhub_mcp"]["mcp_sdk"])
-        self.assertEqual(data["brainhub_mcp"]["version"], engine_cli.LINK_VERSION)
+        self.assertEqual(data["brainhub_mcp"]["version"], engine_cli.BRAINHUB_VERSION)
         self.assertEqual(data["config"]["mcpServers"]["link"]["command"], "/tmp/python")
 
     def test_verify_mcp_json_reports_repair_actions(self):
@@ -2293,7 +2293,7 @@ class LinkCliTests(unittest.TestCase):
                 "pip",
                 "install",
                 "--upgrade",
-                f"brainhub-mcp=={engine_cli.LINK_VERSION}",
+                f"brainhub-mcp=={engine_cli.BRAINHUB_VERSION}",
             ],
         )
         self.assertEqual(
@@ -2314,7 +2314,7 @@ class LinkCliTests(unittest.TestCase):
                 python_cmd="/tmp/python",
                 import_check=lambda _: {
                     "installed": True,
-                    "version": engine_cli.LINK_VERSION,
+                    "version": engine_cli.BRAINHUB_VERSION,
                     "mcp_sdk": True,
                     "error": None,
                 },
@@ -2330,7 +2330,7 @@ class LinkCliTests(unittest.TestCase):
     def test_check_link_mcp_import_requires_mcp_sdk(self):
         stdout = json.dumps({
             "installed": True,
-            "version": engine_cli.LINK_VERSION,
+            "version": engine_cli.BRAINHUB_VERSION,
             "mcp_sdk": False,
             "error": "No module named mcp",
         })
@@ -2342,7 +2342,7 @@ class LinkCliTests(unittest.TestCase):
             payload = engine_cli._core_check_link_mcp_import("/tmp/python")
 
         self.assertTrue(payload["installed"])
-        self.assertEqual(payload["version"], engine_cli.LINK_VERSION)
+        self.assertEqual(payload["version"], engine_cli.BRAINHUB_VERSION)
         self.assertFalse(payload["mcp_sdk"])
         self.assertEqual(payload["error"], "No module named mcp")
         self.assertIn("mcp.server.fastmcp", run.call_args.args[0][2])
@@ -2363,14 +2363,14 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(code, 1)
         text = out.getvalue()
         self.assertIn("brainhub-mcp: installed (0.9.0)", text)
-        self.assertIn(f"Expected version: {engine_cli.LINK_VERSION}", text)
+        self.assertIn(f"Expected version: {engine_cli.BRAINHUB_VERSION}", text)
         expected = engine_cli._display_command([
             "/tmp/Link Python/bin/python",
             "-m",
             "pip",
             "install",
             "--upgrade",
-            f"brainhub-mcp=={engine_cli.LINK_VERSION}",
+            f"brainhub-mcp=={engine_cli.BRAINHUB_VERSION}",
         ])
         self.assertIn(expected, text)
 
@@ -2386,7 +2386,7 @@ class LinkCliTests(unittest.TestCase):
                 python_cmd="/tmp/python",
                 import_check=lambda _: {
                     "installed": True,
-                    "version": engine_cli.LINK_VERSION,
+                    "version": engine_cli.BRAINHUB_VERSION,
                     "mcp_sdk": False,
                     "error": "No module named mcp",
                 },
@@ -2394,10 +2394,10 @@ class LinkCliTests(unittest.TestCase):
 
         self.assertEqual(code, 1)
         text = out.getvalue()
-        self.assertIn(f"brainhub-mcp: installed ({engine_cli.LINK_VERSION})", text)
+        self.assertIn(f"brainhub-mcp: installed ({engine_cli.BRAINHUB_VERSION})", text)
         self.assertIn("MCP SDK: missing", text)
         self.assertIn("Import error: No module named mcp", text)
-        self.assertIn(f"/tmp/python -m pip install --upgrade brainhub-mcp=={engine_cli.LINK_VERSION}", text)
+        self.assertIn(f"/tmp/python -m pip install --upgrade brainhub-mcp=={engine_cli.BRAINHUB_VERSION}", text)
 
     def test_verify_mcp_reports_missing_package(self):
         tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
@@ -2426,7 +2426,7 @@ class LinkCliTests(unittest.TestCase):
             code = engine_cli.verify_mcp(
                 target,
                 python_cmd="/tmp/python",
-                import_check=lambda _: {"installed": True, "version": engine_cli.LINK_VERSION, "error": None},
+                import_check=lambda _: {"installed": True, "version": engine_cli.BRAINHUB_VERSION, "error": None},
             )
 
         self.assertEqual(code, 1)

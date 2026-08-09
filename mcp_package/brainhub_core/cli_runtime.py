@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+from .config import DEFAULT_WORKSPACE
 from .mcp_verify import display_command
 
 
@@ -283,7 +284,7 @@ def render_proof_text(payload: Mapping[str, object]) -> tuple[int, str]:
         "- Save something once; any of your agents can recall it later, from plain local files.",
         "- Ready for real use? Create your durable workspace and wire an agent:",
         f"    {display_command(['bh', 'onboard'])}",
-        "    (this proof workspace is a demo — your memory will live at ~/link)",
+        f"    (this proof workspace is a demo — your memory will live at {DEFAULT_WORKSPACE})",
         "",
         "Try it with two agents",
         f"Agent A: {prompts.get('agent_a', 'remember that this project uses BrainHub')}",

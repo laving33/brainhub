@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import serve
+from brainhub_core import web_http
 from brainhub_core.operations import begin_operation
 from brainhub_core.schema import write_schema
 # The cascade-aware CSS reader lives with the layering guard that needs it most.
@@ -187,10 +188,51 @@ class ServeTests(unittest.TestCase):
         self.assertIn('href="/audit">稽核</a>', html)
         self.assertIn('href="/captures">擷取紀錄</a>', html)
 
-    def test_local_server_uses_threaded_request_handling(self):
-        self.assertTrue(issubclass(serve.ThreadingLocalTCPServer, socketserver.ThreadingMixIn))
+    def test_local_server_uses_pooled_concurrent_request_handling(self):
+        """Concurrency has to be real but bounded.
+
+        Asserted against the shared pool rather than ``ThreadingMixIn``: the mixin
+        would give concurrency with no ceiling on threads. The pool's own
+        behaviour is covered in test_web_http_core.
+        """
+        self.assertTrue(issubclass(serve.ThreadingLocalTCPServer, web_http.BoundedThreadPoolTCPServer))
+        self.assertFalse(
+            issubclass(serve.ThreadingLocalTCPServer, socketserver.ThreadingMixIn),
+            "unbounded thread-per-connection was replaced by the bounded pool",
+        )
         self.assertTrue(serve.ThreadingLocalTCPServer.daemon_threads)
         self.assertTrue(serve.ThreadingLocalTCPServer.allow_reuse_address)
+
+    def test_viewer_transport_is_wired_to_the_server_and_handler(self):
+        """serve.py is the adapter: one config drives the socket and the handler."""
+        transport = serve.ThreadingLocalTCPServer.transport
+        self.assertIs(transport, serve.TRANSPORT)
+        self.assertEqual(serve.REQUEST_TIMEOUT_SECONDS, transport.request_timeout_seconds)
+        self.assertEqual(serve.KEEPALIVE_IDLE_TIMEOUT_SECONDS, transport.keepalive_idle_timeout_seconds)
+        # A shallow accept queue is what "the viewer won't connect" really is:
+        # socketserver defaults it to 5, and one page view opens a burst of
+        # parallel connections, so the kernel starts dropping SYNs almost at once.
+        self.assertGreaterEqual(transport.accept_backlog, 128)
+        self.assertGreaterEqual(transport.max_workers, 1)
+
+    def test_keepalive_is_on_so_a_page_view_costs_one_connection(self):
+        """HTTP/1.0 would close the socket after every response, multiplying the
+        connection count for a single page view by the number of requests in it.
+        Safe only because every response path sets Content-Length."""
+        self.assertEqual(serve.Handler.protocol_version, "HTTP/1.1")
+
+    def test_every_response_path_sets_content_length(self):
+        """The guard behind HTTP/1.1: a keep-alive client needs an explicit
+        message boundary on every response, so a new response helper that
+        forgets Content-Length would hang the browser rather than fail loudly."""
+        source = (Path(serve.__file__).resolve()).read_text(encoding="utf-8")
+        sends = source.count("self.send_response(")
+        lengths = source.count('self.send_header("Content-Length"')
+        self.assertGreaterEqual(
+            lengths,
+            sends,
+            f"{sends} send_response() calls but only {lengths} Content-Length headers",
+        )
 
     def test_serve_startup_banner_points_to_onboarding(self):
         text = "\n".join(serve._serve_startup_lines(3456))
@@ -1155,7 +1197,7 @@ class ServeTests(unittest.TestCase):
 
         self.assertEqual(status, 200)
         self.assertEqual(payload["api_version"], serve.API_VERSION)
-        self.assertEqual(payload["version"], serve.LINK_VERSION)
+        self.assertEqual(payload["version"], serve.BRAINHUB_VERSION)
         self.assertTrue(payload["ready"])
         self.assertEqual(payload["page_count"], 3)
         self.assertEqual(payload["content_page_count"], 1)

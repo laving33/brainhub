@@ -2,10 +2,24 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 
 CONFIG_FILE = "brainhub.config.json"
+
+# Where BrainHub keeps a workspace when the reader does not name one. Defined once
+# here because it is the answer to "which wiki am I reading?" for the CLI defaults,
+# the MCP server, and the onboarding text alike -- they disagreed before this
+# (the MCP server looked in ~/link while the docs promised ~/.brainhub), and a
+# disagreement about that question shows up as an empty wiki, not as an error.
+DEFAULT_WORKSPACE = "~/.brainhub"
+WORKSPACE_ENV = "BRAINHUB_HOME"
+
+
+def default_workspace() -> Path:
+    """The workspace to use when none was given: BRAINHUB_HOME, else the default."""
+    return Path(os.environ.get(WORKSPACE_ENV, DEFAULT_WORKSPACE)).expanduser()
 
 
 def config_path(workspace: Path) -> Path:

@@ -72,8 +72,8 @@ def _command_target(status: Mapping[str, object], operations: Mapping[str, objec
     return str(path.parent if path.name == "wiki" else path)
 
 
-def _link_command(command_target: str, *parts: str) -> str:
-    command = ["link", *parts]
+def _bh_command(command_target: str, *parts: str) -> str:
+    command = ["bh", *parts]
     if command_target:
         command.append(command_target)
     return display_command(command)
@@ -115,33 +115,33 @@ def _command_for_action(action: Mapping[str, object], command_target: str) -> st
     tool = str(action.get("tool") or "").strip()
     arguments = action.get("arguments") if isinstance(action.get("arguments"), dict) else {}
     if tool == "doctor":
-        return _link_command(command_target, "doctor", "--fix") if arguments.get("fix") else _link_command(
+        return _bh_command(command_target, "doctor", "--fix") if arguments.get("fix") else _bh_command(
             command_target, "doctor"
         )
     if tool == "validate_wiki":
-        return _link_command(command_target, "validate")
+        return _bh_command(command_target, "validate")
     if tool == "rebuild_backlinks":
-        return _link_command(command_target, "rebuild-backlinks")
+        return _bh_command(command_target, "rebuild-backlinks")
     if tool == "migrate_wiki":
-        return _link_command(command_target, "migrate")
+        return _bh_command(command_target, "migrate")
     if tool == "ingest_status":
-        return _link_command(command_target, "ingest-status")
+        return _bh_command(command_target, "ingest-status")
     if tool == "starter_prompts":
-        return _link_command(command_target, "prompts")
+        return _bh_command(command_target, "prompts")
     if tool == "memory_inbox":
-        return _link_command(command_target, "memory-inbox")
+        return _bh_command(command_target, "memory-inbox")
     if tool == "backup_wiki":
-        return _link_command(command_target, "backup")
+        return _bh_command(command_target, "backup")
     if tool == "query_link":
         query = str(arguments.get("query") or "").strip()
         if not query or query == "<user task>":
             query = "what should I know before continuing?"
-        return _link_command(command_target, "query", query)
+        return _bh_command(command_target, "query", query)
     if tool == "memory_brief":
         query = str(arguments.get("query") or "").strip()
         if not query or query == "<user task>":
             query = "working with BrainHub"
-        return _link_command(command_target, "brief", query)
+        return _bh_command(command_target, "brief", query)
     return ""
 
 
@@ -304,12 +304,12 @@ def render_health_page(
     operation_items = _dict_list(operations.get("operations"))
     command_target = _command_target(status, operations)
     commands = [
-        _link_command(command_target, "status", "--validate"),
-        _link_command(command_target, "onboard"),
-        _link_command(command_target, "operations"),
-        _link_command(command_target, "doctor", "--fix"),
-        _link_command(command_target, "validate"),
-        _link_command(command_target, "benchmark", "agent memory"),
+        _bh_command(command_target, "status", "--validate"),
+        _bh_command(command_target, "onboard"),
+        _bh_command(command_target, "operations"),
+        _bh_command(command_target, "doctor", "--fix"),
+        _bh_command(command_target, "validate"),
+        _bh_command(command_target, "benchmark", "agent memory"),
     ]
     body = (
         '<div class="breadcrumb"><a href="/">BrainHub</a> / 健康度</div>'

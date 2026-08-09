@@ -6,8 +6,9 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
+from .config import DEFAULT_WORKSPACE
 from .memory import MEMORY_SCOPES, MEMORY_TYPES, MEMORY_VISIBILITIES
-from .version import LINK_VERSION
+from .version import BRAINHUB_VERSION
 
 
 DEFAULT_DEMO_DIR = "link-demo"
@@ -21,7 +22,7 @@ def build_cli_parser(
 ) -> argparse.ArgumentParser:
     """Build the BrainHub CLI argument parser."""
     parser = argparse.ArgumentParser(prog="brainhub_engine.py", description="BrainHub command runner")
-    parser.add_argument("--version", action="version", version=f"BrainHub {LINK_VERSION}")
+    parser.add_argument("--version", action="version", version=f"BrainHub {BRAINHUB_VERSION}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("version", help="print the BrainHub CLI version")
@@ -52,7 +53,7 @@ def build_cli_parser(
     proof_cmd.add_argument("--json", action="store_true", help="print machine-readable proof data")
 
     onboard_cmd = sub.add_parser("onboard", help="set up a real BrainHub workspace and print the agent-first next steps")
-    onboard_cmd.add_argument("target", nargs="?", default="~/link")
+    onboard_cmd.add_argument("target", nargs="?", default=DEFAULT_WORKSPACE)
     onboard_cmd.add_argument("--agent", action="append", default=[], help="agent config to preview or write; repeatable")
     onboard_cmd.add_argument("--all-agents", action="store_true", help="preview or write all supported agent configs")
     onboard_cmd.add_argument("--write", action="store_true", help="update selected agent config files")
@@ -75,7 +76,7 @@ def build_cli_parser(
 
     seed_cmd = sub.add_parser("seed", help="seed BrainHub with source-backed context from this project")
     seed_cmd.add_argument("project", nargs="?", default=".", help="project directory to inspect")
-    seed_cmd.add_argument("target", nargs="?", default="~/link", help="BrainHub workspace to seed")
+    seed_cmd.add_argument("target", nargs="?", default=DEFAULT_WORKSPACE, help="BrainHub workspace to seed")
     seed_cmd.add_argument("--project-name", default=None, help="display name/project slug for the generated seed")
     seed_cmd.add_argument("--overwrite", action="store_true", help="replace the generated seed source if it already exists")
     seed_cmd.add_argument("--dry-run", action="store_true", help="show what would be seeded without writing files")

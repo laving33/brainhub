@@ -257,7 +257,7 @@ from brainhub_core.mcp_verify import (
     display_command as _core_display_command,
     render_mcp_verify_text as _core_render_mcp_verify_text,
     resolve_mcp_python as _core_resolve_mcp_python,
-    set_link_command_override as _core_set_link_command_override,
+    set_bh_command_override as _core_set_bh_command_override,
 )
 from brainhub_core.mcp_connect import (
     build_mcp_connect_payload as _core_build_mcp_connect_payload,
@@ -302,6 +302,7 @@ from brainhub_core.security import (
     clean_text_input as _clean_text_input,
 )
 from brainhub_core.config import (
+    DEFAULT_WORKSPACE as _CORE_DEFAULT_WORKSPACE,
     memory_disabled_notice as _core_memory_disabled_notice,
     memory_layer_enabled as _core_memory_layer_enabled,
 )
@@ -333,7 +334,7 @@ from brainhub_core.validation import (
     validate_wiki as _core_validate_wiki,
 )
 from brainhub_core.version import (
-    LINK_VERSION,
+    BRAINHUB_VERSION,
 )
 from brainhub_core.cli_style import (
     style_cli_text as _core_style_cli_text,
@@ -372,7 +373,7 @@ def _missing_wiki_error(wiki_dir: Path) -> int:
     print(f"Missing wiki directory: {wiki_dir}", file=sys.stderr)
     print(
         "Point BrainHub at your workspace (for example: "
-        f"{_display_command(['bh', 'status', str(Path.home() / 'link')])}) "
+        f"{_display_command(['bh', 'status', _CORE_DEFAULT_WORKSPACE])}) "
         f"or create one here with {_display_command(['bh', 'init', '.'])}.",
         file=sys.stderr,
     )
@@ -776,12 +777,12 @@ def migrate(target: Path, json_output: bool = False) -> int:
 def status(target: Path, include_validation: bool = False, json_output: bool = False) -> int:
     target = target.expanduser().resolve()
     wiki_dir = _resolve_wiki_dir(target)
-    payload = _core_link_status(wiki_dir, version=LINK_VERSION, include_validation=include_validation)
+    payload = _core_link_status(wiki_dir, version=BRAINHUB_VERSION, include_validation=include_validation)
     if json_output:
         print(json.dumps(payload, indent=2))
         return 0 if payload["ready"] else 1
 
-    code, text = _core_render_status_text(payload, wiki_dir=wiki_dir, version=LINK_VERSION)
+    code, text = _core_render_status_text(payload, wiki_dir=wiki_dir, version=BRAINHUB_VERSION)
     _print_text(text)
     return code
 
@@ -811,7 +812,7 @@ def _render_health_text(payload: dict[str, object]) -> str:
     lines = [
         f"BrainHub health: {status_payload.get('wiki')}",
         "",
-        f"Version: {status_payload.get('version', LINK_VERSION)}",
+        f"Version: {status_payload.get('version', BRAINHUB_VERSION)}",
         f"Ready: {'yes' if payload.get('ready') else 'no'}",
         f"Pages: {status_payload.get('page_count', 0)}",
         f"Memories: {status_payload.get('memory_count', 0)} total · {status_payload.get('needs_review_count', 0)} need review",
@@ -845,10 +846,10 @@ def _render_health_text(payload: dict[str, object]) -> str:
 def health(target: Path, json_output: bool = False) -> int:
     target = target.expanduser().resolve()
     wiki_dir = _resolve_wiki_dir(target)
-    status_payload = _core_link_status(wiki_dir, version=LINK_VERSION, include_validation=True)
+    status_payload = _core_link_status(wiki_dir, version=BRAINHUB_VERSION, include_validation=True)
     operations_payload = _core_operation_report(wiki_dir, limit=20)
     payload = {
-        "version": LINK_VERSION,
+        "version": BRAINHUB_VERSION,
         "ready": bool(status_payload.get("ready")) and not operations_payload.get("operation_count"),
         "status": status_payload,
         "operations": operations_payload,
@@ -968,7 +969,7 @@ def compliance_export(
     wiki_dir = _resolve_wiki_dir(target)
     payload = _core_build_compliance_export(
         wiki_dir,
-        version=LINK_VERSION,
+        version=BRAINHUB_VERSION,
         project=project or _default_project(target),
         limit=limit,
     )
@@ -1656,13 +1657,13 @@ def recall(
                     "(semantic recall) is off by default. Turn it on to find memories phrased "
                     "differently:\n"
                     "  pip install \"brainhub-mcp[semantic]\"\n"
-                    f"  {_display_command(['link', 'semantic', str(target), '--setup'])}"
+                    f"  {_display_command(['bh', 'semantic', str(target), '--setup'])}"
                 )
             elif _core_load_semantic_embedder() is None:
                 miss_hint = (
                     "These memories exist but your words did not match any. Finish enabling "
                     "paraphrase matching (semantic recall):\n"
-                    f"  {_display_command(['link', 'semantic', str(target), '--setup'])}"
+                    f"  {_display_command(['bh', 'semantic', str(target), '--setup'])}"
                 )
 
     code, text = _core_render_recall_text(
@@ -1946,7 +1947,7 @@ def start(
         return _missing_wiki_error(wiki_dir)
     task = _clean_text_input(task, max_len=500)
     project_name = project or _default_project(target)
-    status_payload = _core_link_status(wiki_dir, version=LINK_VERSION, include_validation=True)
+    status_payload = _core_link_status(wiki_dir, version=BRAINHUB_VERSION, include_validation=True)
     brief_payload = _memory_brief(wiki_dir, query=task, limit=limit, project=project_name)
     brief_payload = _core_add_capture_review_to_brief(
         brief_payload,
@@ -1958,7 +1959,7 @@ def start(
     project_seed_recommended = bool(status_payload.get("ready")) and not relevant_count and not int(
         status_payload.get("content_page_count") or 0
     )
-    seed_command = _display_command(["link", "seed", ".", str(target)])
+    seed_command = _display_command(["bh", "seed", ".", str(target)])
     context_preview: dict[str, object] | None = None
     if task and int(status_payload.get("content_page_count") or 0):
         preview_payload = _query_link(wiki_dir, task, budget="micro", project=project_name)
@@ -1978,11 +1979,11 @@ def start(
         "brief": brief_payload,
         "context_preview": context_preview or {},
         "commands": {
-            "health": _display_command(["link", "health", str(target)]),
-            "query": _display_command(["link", "query", query_text, str(target), "--budget", "micro"]),
-            "brief": _display_command(["link", "brief", query_text, str(target)]),
-            "remember": _display_command(["link", "remember", "<approved memory>", str(target)]),
-            "review": _display_command(["link", "memory-inbox", str(target)]),
+            "health": _display_command(["bh", "health", str(target)]),
+            "query": _display_command(["bh", "query", query_text, str(target), "--budget", "micro"]),
+            "brief": _display_command(["bh", "brief", query_text, str(target)]),
+            "remember": _display_command(["bh", "remember", "<approved memory>", str(target)]),
+            "review": _display_command(["bh", "memory-inbox", str(target)]),
             "seed_project": seed_command,
         },
         "project_seed": {
@@ -2075,7 +2076,7 @@ def semantic(target: Path, setup: bool = False, rebuild: bool = False, json_outp
                 action_result += (
                     " Quality tier active: expect a ~5s model load per short-lived CLI command; "
                     "the MCP server loads it once and stays fast. Prefer instant CLI recall? "
-                    "Set LINK_SEMANTIC_PROVIDER=model2vec (fast tier)."
+                    "Set BRAINHUB_SEMANTIC_PROVIDER=model2vec (fast tier)."
                 )
     payload = _core_build_semantic_status(
         root, memory_count=active_count, command_target=root, python_cmd=sys.executable
@@ -2155,7 +2156,7 @@ def _hook_session_start(
             project_name = _default_project(Path(project_dir))
     if not project_name:
         project_name = _default_project(target)
-    status_payload = _core_link_status(wiki_dir, version=LINK_VERSION, include_validation=False)
+    status_payload = _core_link_status(wiki_dir, version=BRAINHUB_VERSION, include_validation=False)
     brief_payload = _memory_brief(wiki_dir, query="", limit=limit, project=project_name)
     brief_payload = _core_add_capture_review_to_brief(
         brief_payload,
@@ -2321,13 +2322,13 @@ def _display_command(parts: list[str]) -> str:
 
 
 def _configure_link_command_display() -> None:
-    if os.environ.get("LINK_CLI_COMMAND"):
-        _core_set_link_command_override(None)
+    if os.environ.get("BRAINHUB_CLI_COMMAND"):
+        _core_set_bh_command_override(None)
     else:
         # Source-checkout runs: show a friendly `python3 brainhub_engine.py` in generated
         # commands, not the raw interpreter path (e.g. python@3.14). The
         # absolute brainhub_engine.py path stays for paste-safety from any directory.
-        _core_set_link_command_override(["python3", str(ROOT / "brainhub_engine.py")])
+        _core_set_bh_command_override(["python3", str(ROOT / "brainhub_engine.py")])
 
 
 def verify_mcp(
@@ -2342,7 +2343,7 @@ def verify_mcp(
         target=target,
         wiki_dir=wiki_dir,
         init_command=[sys.executable, str(ROOT / "brainhub_engine.py"), "init", str(target)],
-        expected_version=LINK_VERSION,
+        expected_version=BRAINHUB_VERSION,
         python_cmd=python_cmd,
         default_python=sys.executable,
         import_check=import_check,
@@ -2377,7 +2378,7 @@ def connect_mcp(
         target=target,
         wiki_dir=wiki_dir,
         agent=agent,
-        expected_version=LINK_VERSION,
+        expected_version=BRAINHUB_VERSION,
         init_command=[sys.executable, str(ROOT / "brainhub_engine.py"), "init", str(target)],
         python_cmd=python_cmd,
         default_python=sys.executable,
@@ -2511,14 +2512,14 @@ def onboard(
             status_value = str(seed_result.get("status") or "")
             if status_value == "already_seeded":
                 seed_result["next_commands"] = [
-                    _display_command(["link", "seed", str(seed_project_root), str(target), "--overwrite"]),
-                    _display_command(["link", "query", "what is this project about?", str(target), "--budget", "small"]),
-                    _display_command(["link", "health", str(target)]),
+                    _display_command(["bh", "seed", str(seed_project_root), str(target), "--overwrite"]),
+                    _display_command(["bh", "query", "what is this project about?", str(target), "--budget", "small"]),
+                    _display_command(["bh", "health", str(target)]),
                 ]
             elif status_value == "needs_attention":
                 seed_result["next_commands"] = [
                     "redact blocked project files, then rerun: "
-                    + _display_command(["link", "seed", str(seed_project_root), str(target)])
+                    + _display_command(["bh", "seed", str(seed_project_root), str(target)])
                 ]
             elif status_value == "empty":
                 seed_result["next_commands"] = [
@@ -2526,9 +2527,9 @@ def onboard(
                 ]
             else:
                 seed_result["next_commands"] = [
-                    _display_command(["link", "query", "what is this project about?", str(target), "--budget", "small"]),
-                    _display_command(["link", "brief", f"working on {seed_result.get('project_title') or 'this project'}", str(target)]),
-                    _display_command(["link", "health", str(target)]),
+                    _display_command(["bh", "query", "what is this project about?", str(target), "--budget", "small"]),
+                    _display_command(["bh", "brief", f"working on {seed_result.get('project_title') or 'this project'}", str(target)]),
+                    _display_command(["bh", "health", str(target)]),
                 ]
         except (OSError, ValueError) as exc:
             seed_result = {
@@ -2540,7 +2541,7 @@ def onboard(
                 "included_count": 0,
                 "blocked_secret_count": 0,
                 "read_error_count": 1,
-                "next_commands": [_display_command(["link", "seed", seed_project, str(target)])],
+                "next_commands": [_display_command(["bh", "seed", seed_project, str(target)])],
             }
 
     connections: list[dict[str, object]] = []
@@ -2550,7 +2551,7 @@ def onboard(
                 target=target,
                 wiki_dir=wiki_dir,
                 agent=agent,
-                expected_version=LINK_VERSION,
+                expected_version=BRAINHUB_VERSION,
                 init_command=[sys.executable, str(ROOT / "brainhub_engine.py"), "init", str(target)],
                 default_python=sys.executable,
                 write=write,
@@ -2585,14 +2586,14 @@ def onboard(
         agent_name = str(connection.get("agent") or "")
         if agent_name and _core_supports_agent_hooks(agent_name) and "session_hooks" not in connection:
             connection["hooks_command"] = _display_command(
-                ["link", "onboard", str(target), "--agent", agent_name, "--hooks", "--write"]
+                ["bh", "onboard", str(target), "--agent", agent_name, "--hooks", "--write"]
             )
     hooks_agents = [
         agent for agent in _onboard_agent_names(agents, all_agents)
         if _core_supports_agent_hooks(agent)
     ]
 
-    status_payload = _core_link_status(wiki_dir, version=LINK_VERSION, include_validation=True)
+    status_payload = _core_link_status(wiki_dir, version=BRAINHUB_VERSION, include_validation=True)
     starter_payload = _core_starter_prompt_payload(target, project=project)
     prompts = starter_payload.get("prompts", [])
     if first_memory and isinstance(prompts, list):
@@ -2606,12 +2607,12 @@ def onboard(
             for item in prompts
         ]
     commands = {
-        "health": _display_command(["link", "health", str(target)]),
-        "serve": _display_command(["link", "serve", str(target), "--port", str(port)]),
-        "seed_project": _display_command(["link", "seed", ".", str(target)]),
-        "memory_inbox": _display_command(["link", "memory-inbox", str(target)]),
-        "ingest_status": _display_command(["link", "ingest-status", str(target)]),
-        "brief": _display_command(["link", "brief", "working with BrainHub", str(target)]),
+        "health": _display_command(["bh", "health", str(target)]),
+        "serve": _display_command(["bh", "serve", str(target), "--port", str(port)]),
+        "seed_project": _display_command(["bh", "seed", ".", str(target)]),
+        "memory_inbox": _display_command(["bh", "memory-inbox", str(target)]),
+        "ingest_status": _display_command(["bh", "ingest-status", str(target)]),
+        "brief": _display_command(["bh", "brief", "working with BrainHub", str(target)]),
     }
     payload: dict[str, object] = {
         "target": str(target),
@@ -2625,14 +2626,14 @@ def onboard(
         "prompts": prompts,
         "commands": commands,
         "agent_examples": [
-            _display_command(["link", "onboard", str(target), "--agent", agent])
+            _display_command(["bh", "onboard", str(target), "--agent", agent])
             for agent in ("codex", "claude-code", "cursor")
         ],
         "hooks_hint": (
             "Make memory automatic — add --hooks (Claude Code, Codex, Cursor): the memory brief "
             "is injected at session start and proposals are captured at session end, so no agent "
             "has to remember to call BrainHub. Example:\n"
-            f"  {_display_command(['link', 'onboard', str(target), '--agent', 'claude-code', '--hooks', '--write'])}"
+            f"  {_display_command(['bh', 'onboard', str(target), '--agent', 'claude-code', '--hooks', '--write'])}"
         ) if (hooks_agents or not connections) and not hooks else "",
         "url": f"http://127.0.0.1:{port}",
     }
@@ -2689,14 +2690,14 @@ def seed_project(
     status_value = str(payload.get("status") or "")
     if status_value == "already_seeded":
         payload["next_commands"] = [
-            _display_command(["link", "seed", str(project_root), str(target), "--overwrite"]),
-            _display_command(["link", "query", "what is this project about?", str(target), "--budget", "small"]),
-            _display_command(["link", "health", str(target)]),
+            _display_command(["bh", "seed", str(project_root), str(target), "--overwrite"]),
+            _display_command(["bh", "query", "what is this project about?", str(target), "--budget", "small"]),
+            _display_command(["bh", "health", str(target)]),
         ]
     elif status_value == "needs_attention":
         payload["next_commands"] = [
             "redact blocked project files, then rerun: "
-            + _display_command(["link", "seed", str(project_root), str(target)])
+            + _display_command(["bh", "seed", str(project_root), str(target)])
         ]
     elif status_value == "empty":
         payload["next_commands"] = [
@@ -2704,9 +2705,9 @@ def seed_project(
         ]
     else:
         payload["next_commands"] = [
-            _display_command(["link", "query", "what is this project about?", str(target), "--budget", "small"]),
-            _display_command(["link", "brief", f"working on {payload.get('project_title') or 'this project'}", str(target)]),
-            _display_command(["link", "health", str(target)]),
+            _display_command(["bh", "query", "what is this project about?", str(target), "--budget", "small"]),
+            _display_command(["bh", "brief", f"working on {payload.get('project_title') or 'this project'}", str(target)]),
+            _display_command(["bh", "health", str(target)]),
         ]
     if json_output:
         print(json.dumps(payload, indent=2, default=str))
@@ -2751,13 +2752,13 @@ def serve_wiki(target: Path, port: int = 3000) -> int:
         print(f"BrainHub viewer missing: {serve_path}")
         print("")
         print("Next:")
-        print(f"  {_display_command(['link', 'init', str(target)])}")
+        print(f"  {_display_command(['bh', 'init', str(target)])}")
         return 1
     if not (target / "wiki").exists():
         print(f"BrainHub wiki missing: {target / 'wiki'}")
         print("")
         print("Next:")
-        print(f"  {_display_command(['link', 'init', str(target)])}")
+        print(f"  {_display_command(['bh', 'init', str(target)])}")
         return 1
     try:
         return subprocess.run(
@@ -2905,7 +2906,7 @@ def proof(
 
     query_text = "cross-agent proof local memory"
     recall_payload = _query_link(wiki_dir, query_text, budget="micro")
-    status_payload = _core_link_status(wiki_dir, version=LINK_VERSION, include_validation=True)
+    status_payload = _core_link_status(wiki_dir, version=BRAINHUB_VERSION, include_validation=True)
     recall_found = _proof_recall_found(recall_payload, PROOF_MEMORY_TITLE)
     ready = bool(status_payload.get("ready")) and recall_found
     command_target = str(target)
@@ -2927,10 +2928,10 @@ def proof(
             "agent_b": "start with BrainHub before we continue, then tell me what BrainHub remembers about cross-agent proof",
         },
         "commands": {
-            "start": _display_command(["link", "start", command_target, "--task", "cross-agent proof"]),
-            "recall": _display_command(["link", "query", query_text, command_target, "--budget", "micro"]),
-            "mcp": _display_command(["link", "connect", "codex", command_target]),
-            "serve": _display_command(["link", "serve", command_target, "--port", str(port)]),
+            "start": _display_command(["bh", "start", command_target, "--task", "cross-agent proof"]),
+            "recall": _display_command(["bh", "query", query_text, command_target, "--budget", "micro"]),
+            "mcp": _display_command(["bh", "connect", "codex", command_target]),
+            "serve": _display_command(["bh", "serve", command_target, "--port", str(port)]),
         },
         "url": f"http://127.0.0.1:{port}",
     }
@@ -2966,7 +2967,7 @@ def try_link(
         created = True
 
     wiki_dir = _resolve_wiki_dir(target)
-    status_payload = _core_link_status(wiki_dir, version=LINK_VERSION, include_validation=True)
+    status_payload = _core_link_status(wiki_dir, version=BRAINHUB_VERSION, include_validation=True)
     query_payload = _query_link(wiki_dir, "why does BrainHub help agents?", budget="small")
     brief_payload = _memory_brief(wiki_dir, "working on agent memory", limit=6)
     payload = {
@@ -2977,12 +2978,12 @@ def try_link(
         "query": query_payload,
         "brief": brief_payload,
         "commands": {
-            "serve": _display_command(["link", "serve", str(target), "--port", str(port)]),
-            "next": _display_command(["link", "next", str(target)]),
-            "health": _display_command(["link", "health", str(target)]),
-            "query": _display_command(["link", "query", "why does BrainHub help agents?", str(target), "--budget", "small"]),
-            "brief": _display_command(["link", "brief", "working on agent memory", str(target)]),
-            "benchmark": _display_command(["link", "benchmark", "agent memory", str(target)]),
+            "serve": _display_command(["bh", "serve", str(target), "--port", str(port)]),
+            "next": _display_command(["bh", "next", str(target)]),
+            "health": _display_command(["bh", "health", str(target)]),
+            "query": _display_command(["bh", "query", "why does BrainHub help agents?", str(target), "--budget", "small"]),
+            "brief": _display_command(["bh", "brief", "working on agent memory", str(target)]),
+            "benchmark": _display_command(["bh", "benchmark", "agent memory", str(target)]),
         },
         "url": f"http://127.0.0.1:{port}",
     }
@@ -3079,13 +3080,13 @@ def main(argv: list[str] | None = None) -> int:
             "rebuild-backlinks": rebuild_backlinks,
             "verify-mcp": verify_mcp,
             "connect": connect_mcp,
-            "version": lambda: print(f"BrainHub {LINK_VERSION}") or 0,
+            "version": lambda: print(f"BrainHub {BRAINHUB_VERSION}") or 0,
         })
     except ValueError as exc:
         parser.error(str(exc))
         return 2
     finally:
-        _core_set_link_command_override(None)
+        _core_set_bh_command_override(None)
 
 
 if __name__ == "__main__":

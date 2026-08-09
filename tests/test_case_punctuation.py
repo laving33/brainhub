@@ -150,7 +150,23 @@ class _IsolatedFontCache(unittest.TestCase):
 
 
 class CasePunctuationRepairTest(_IsolatedFontCache):
-    """The cmap-level contract. Runs anywhere fontTools does."""
+    """The cmap-level contract. Runs anywhere fontTools does -- and the brand face is."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        # These assertions read the brand face itself, so they can only run where the
+        # brand fonts are installed; a standalone BrainHub install has none, and
+        # `fonts.BRAND_FONTS` documents that absent fonts degrade gracefully at
+        # runtime (no embed, no error). Skipping keeps that a *skip*, which is what
+        # `test_brand_assets.py` already does for the same reason -- erroring instead
+        # would leave a permanently red suite, and a suite that is always red cannot
+        # tell anyone that they just broke something.
+        missing = [path.name for path in CANON if not path.is_file()]
+        if missing:
+            raise unittest.SkipTest(
+                f"brand fonts not present ({', '.join(missing)} under {fonts.BRAND_FONTS}); "
+                "set BRAINHUB_BRAND_FONTS to a directory holding them to run these"
+            )
 
     def _repaired(self, path: Path) -> bytes:
         """Repair, failing legibly if it declined.

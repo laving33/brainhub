@@ -24,8 +24,8 @@ def render_query_text(
             "",
             "Next:",
             "- Add source material under raw/ and ask your agent: ingest the new raw BrainHub files",
-            f"- Run: {display_command(['link', 'ingest-status', *target_parts])}",
-            f"- Then rerun: {display_command(['link', 'query', query_text, *target_parts])}",
+            f"- Run: {display_command(['bh', 'ingest-status', *target_parts])}",
+            f"- Then rerun: {display_command(['bh', 'query', query_text, *target_parts])}",
         ])
         return 0, "\n".join(lines)
 

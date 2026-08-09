@@ -4,6 +4,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from . import brand as _brand
+
 __all__ = [
     "CSS",
     "BRAND_TOKENS_CSS",
@@ -785,7 +787,15 @@ _VENDOR_DIR = Path(__file__).resolve().parent / "vendor"
 
 
 def _read_brand_tokens() -> str:
-    """Read the vendored token stylesheet from disk (no network, no core/ ref)."""
+    """The palette: a brand pack's ``tokens.css`` if present, else the bundled theme.
+
+    This is the swap point for a deployment's own corporate identity. daisyUI's
+    themes below map onto these same token names, so replacing this file recolours
+    the components too without touching the component sheet.
+    """
+    override = _brand.text_asset(_brand.TOKENS_ASSET)
+    if override is not None:
+        return override
     return (_VENDOR_DIR / "aworkr-tokens.css").read_text(encoding="utf-8")
 
 
@@ -856,7 +866,11 @@ def _namespace_daisy_border(css: str) -> str:
 
 
 def _read_daisy_css() -> str:
-    raw = (_VENDOR_DIR / "aworkr-daisyui.css").read_text(encoding="utf-8")
+    # A brand pack only needs to ship this if it rebuilt the component sheet;
+    # recolouring normally means replacing tokens.css alone, which this maps onto.
+    raw = _brand.text_asset(_brand.DAISY_ASSET)
+    if raw is None:
+        raw = (_VENDOR_DIR / "aworkr-daisyui.css").read_text(encoding="utf-8")
     return _namespace_daisy_border(_strip_tailwind_preflight(raw))
 
 

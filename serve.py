@@ -8,7 +8,6 @@ import http.server
 import json
 import os
 import re
-import socketserver
 import sys
 import threading
 import time
@@ -82,10 +81,10 @@ from brainhub_core.doctor import (
     raw_source_refs as _core_raw_source_refs,
 )
 from brainhub_core.version import (
-    LINK_VERSION,
+    BRAINHUB_VERSION,
 )
 from brainhub_core.mcp_verify import (
-    set_link_command_override as _core_set_link_command_override,
+    set_bh_command_override as _core_set_bh_command_override,
 )
 from brainhub_core.web_assets import CSS  # noqa: F401 - kept as serve.CSS for tests and compatibility
 from brainhub_core.text import slugify
@@ -169,7 +168,9 @@ from brainhub_core.web_ingest import (
 from brainhub_core.web_http import (
     ARTIFACT_CONTENT_SECURITY_POLICY as _core_artifact_content_security_policy,
     artifact_security_headers as _core_artifact_security_headers,
+    BoundedThreadPoolTCPServer as _CoreBoundedThreadPoolTCPServer,
     CONTENT_SECURITY_POLICY as _core_content_security_policy,
+    env_bounded_int as _core_env_bounded_int,
     is_allowed_static_file as _core_is_allowed_static_file,
     is_relative_to as _core_is_relative_to,
     LocalRateLimiter as _CoreLocalRateLimiter,
@@ -182,6 +183,11 @@ from brainhub_core.web_http import (
     SVG_CONTENT_SECURITY_POLICY as _core_svg_content_security_policy,
     validate_local_browser_source_headers as _core_validate_local_browser_source_headers,
     validate_local_host_header as _core_validate_local_host_header,
+    ViewerTransportConfig as _CoreViewerTransportConfig,
+)
+from brainhub_core.render.pdf import (
+    find_pdf_renderer as _core_find_pdf_renderer,
+    pdf_unavailable_reason as _core_pdf_unavailable_reason,
 )
 from brainhub_core.web_proposals import (
     create_raw_source_payload as _core_create_raw_source_payload,
@@ -269,9 +275,17 @@ MAX_PROPOSAL_SOURCE_BYTES = 64 * 1024
 MAX_RAW_SOURCE_BYTES = 60 * 1024
 LOCAL_ACTION_HEADER = "X-BrainHub-Local-Action"
 LOCAL_ACTION_VALUES = {"1", "true", "yes"}
-MUTATION_RATE_LIMIT = 180
-MUTATION_RATE_WINDOW_SECONDS = 60
-REQUEST_TIMEOUT_SECONDS = 15
+# Mutation budget per client IP. Env-overridable because the per-IP assumption
+# breaks behind a reverse proxy: every reader then arrives as the proxy's single
+# address and shares one budget, so a shared deployment needs to raise it.
+MUTATION_RATE_LIMIT = _core_env_bounded_int("BRAINHUB_MUTATION_RATE_LIMIT", 180, 1, 100_000)
+MUTATION_RATE_WINDOW_SECONDS = _core_env_bounded_int("BRAINHUB_MUTATION_RATE_WINDOW", 60, 1, 86_400)
+# Socket-layer sizing (accept backlog, worker ceiling, timeouts) with the
+# BRAINHUB_* environment overrides applied. Read once at import so every request
+# sees the same limits.
+TRANSPORT = _CoreViewerTransportConfig.from_env()
+REQUEST_TIMEOUT_SECONDS = TRANSPORT.request_timeout_seconds
+KEEPALIVE_IDLE_TIMEOUT_SECONDS = TRANSPORT.keepalive_idle_timeout_seconds
 CONTENT_SECURITY_POLICY = _core_content_security_policy
 PERMISSIONS_POLICY = _core_permissions_policy
 SVG_CONTENT_SECURITY_POLICY = _core_svg_content_security_policy
@@ -374,11 +388,15 @@ _mutation_rate_limiter = _CoreLocalRateLimiter(
 )
 
 
-class ThreadingLocalTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    """Local-only server that keeps navigation responsive during slow requests."""
+class ThreadingLocalTCPServer(_CoreBoundedThreadPoolTCPServer):
+    """The viewer's server: the shared bounded pool, sized from the environment.
 
-    daemon_threads = True
-    allow_reuse_address = True
+    Everything about how connections are queued and served lives in
+    ``brainhub_core.web_http``; this binds it to the viewer's transport config and
+    keeps the historical name.
+    """
+
+    transport = TRANSPORT
 
 
 def _invalidate_pages_cache() -> None:
@@ -2083,10 +2101,11 @@ def _artifacts_root() -> Path:
     return WIKI_DIR.parent / "artifacts"
 
 
-# White-label / packaging: BRAINHUB_CHROME_PDF may point at any script taking
-# (src.html, out.pdf, timeout_ms). Absent → only the "download PDF" endpoint
-# fails; viewing, publishing and search are unaffected.
-_CHROME_PDF = Path(os.environ.get("BRAINHUB_CHROME_PDF", "/home/aworkr/aworkr/tools/chrome/chrome-pdf"))
+# Resolved per request rather than at import: a machine can gain a browser (or an
+# operator can set BRAINHUB_CHROME_PDF) without restarting the viewer. See
+# brainhub_core/render/pdf.py for why discovery exists at all -- the previous
+# default was one absolute path to an in-house wrapper, so on every other install
+# the download-PDF button was present but could never work.
 # Injected before </body> at PDF-render time so the capture is complete even for
 # artifacts rendered before any reveal logic existed. Modern Chrome hides
 # <details> content via content-visibility (NOT child display:none), so CSS
@@ -2159,8 +2178,12 @@ def _artifact_pdf_bytes(artifact_path: Path) -> bytes | None:
             src = Path(td) / "artifact.html"
             src.write_text(injected, encoding="utf-8")
             out = Path(td) / "artifact.pdf"
+            renderer = _core_find_pdf_renderer()
+            if renderer is None:
+                print(f"warning: {_core_pdf_unavailable_reason()}", file=sys.stderr)
+                return None
             subprocess.run(
-                [str(_CHROME_PDF), str(src), str(out), "20000"],
+                renderer.command(src, out),
                 check=True, capture_output=True, timeout=120,
             )
             if out.exists() and out.stat().st_size > 0:
@@ -2779,7 +2802,7 @@ def _validate_wiki_payload(strict: bool = False) -> dict[str, object]:
 def _link_status_payload(include_validation: bool = False) -> dict[str, object]:
     payload = _core_link_status(
         WIKI_DIR,
-        version=LINK_VERSION,
+        version=BRAINHUB_VERSION,
         include_validation=include_validation,
     )
     payload["api_version"] = API_VERSION
@@ -2884,9 +2907,31 @@ def _render_onboard(project: str | None = None):
 # ---------------------------------------------------------------------------
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    # BaseHTTPRequestHandler defaults to HTTP/1.0, which closes the socket
+    # after every response -- so a single page view costs one fresh TCP
+    # connection per request (document, then each API call). Keep-alive lets a
+    # reader reuse one connection for the whole burst, cutting accept-queue
+    # pressure by roughly the number of requests per page. Safe to enable
+    # because every response path here sets Content-Length and suppresses the
+    # body on HEAD, so the client can always find the message boundary.
+    protocol_version = "HTTP/1.1"
+
     def setup(self):
         super().setup()
         self.request.settimeout(REQUEST_TIMEOUT_SECONDS)
+
+    def handle_one_request(self):
+        super().handle_one_request()
+        # Past the first exchange this socket is only waiting to see whether a
+        # follow-up request arrives. Leaving the full request timeout in place
+        # would pin one thread per idle keep-alive connection for that long; a
+        # shorter idle window recycles threads quickly while still covering a
+        # browser's page-load burst.
+        if not self.close_connection:
+            try:
+                self.request.settimeout(KEEPALIVE_IDLE_TIMEOUT_SECONDS)
+            except OSError:
+                pass
 
     def do_HEAD(self):
         """HEAD requests: send headers only, no body."""
@@ -3787,10 +3832,10 @@ def _serve_startup_lines(port: int) -> list[str]:
 def main():
     global PORT, WIKI_DIR, RAW_DIR, BIND_HOST
     PORT, root, BIND_HOST = _parse_serve_args(sys.argv[1:], default_port=PORT, default_root=ROOT)
-    if os.environ.get("LINK_CLI_COMMAND"):
-        _core_set_link_command_override(None)
+    if os.environ.get("BRAINHUB_CLI_COMMAND"):
+        _core_set_bh_command_override(None)
     else:
-        _core_set_link_command_override([sys.executable, str(root / "brainhub_engine.py")])
+        _core_set_bh_command_override([sys.executable, str(root / "brainhub_engine.py")])
     WIKI_DIR = root / "wiki"
     RAW_DIR = root / "raw"
     try:

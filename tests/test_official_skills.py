@@ -6,11 +6,16 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
 
 EXPECTED_SKILLS = {
-    "brainhub-health": ("bh health", "bh operations", "bh backup", "bh validate"),
-    "brainhub-retrieve": ("bh query", "bh brief", "bh graph-summary", "bh benchmark"),
-    "brainhub-ingest": ("bh ingest-status", "bh propose-memories", "bh rebuild-index", "bh validate"),
-    "brainhub-memory": ("bh brief", "bh recall", "bh session-end", "bh remember", "bh memory-inbox"),
-    "brainhub-runtime": ("python3 brainhub.py init", "python3 brainhub.py artifact add", "python3 brainhub.py artifact list"),
+    "46m-bh-health": ("bh health", "bh operations", "bh backup", "bh validate"),
+    "46m-bh-retrieve": ("bh query", "bh brief", "bh graph-summary", "bh benchmark"),
+    "46m-bh-ingest": ("bh ingest-status", "bh propose-memories", "bh rebuild-index", "bh validate"),
+    "46m-bh-memory": ("bh brief", "bh recall", "bh session-end", "bh remember", "bh memory-inbox"),
+    "46m-bh-runtime": (
+        "python3 brainhub.py init",
+        "python3 brainhub.py artifact add",
+        "python3 brainhub.py artifact capture",
+        "python3 brainhub.py artifact list",
+    ),
 }
 
 
@@ -54,7 +59,7 @@ class OfficialSkillsTests(unittest.TestCase):
             with self.subTest(skill=name):
                 text = read_skill(name)
                 lower = text.lower()
-                if name == "brainhub-runtime":
+                if name == "46m-bh-runtime":
                     self.assertIn("brainhub.py", text)
                     self.assertIn("[workspace]", text)
                 else:
@@ -68,11 +73,11 @@ class OfficialSkillsTests(unittest.TestCase):
 
     def test_skills_have_ambient_agent_triggers(self):
         expectations = {
-            "brainhub-health": ("start", "readiness", "installs"),
-            "brainhub-retrieve": ("before answering", "first substantive turn", "prior BrainHub memory"),
-            "brainhub-ingest": ("raw files", "drops files", "learn next"),
-            "brainhub-memory": ("important user-approved decisions", "propose first", "durable memory"),
-            "brainhub-runtime": ("runtime node", "workflow artifact", "source-backed"),
+            "46m-bh-health": ("start", "readiness", "installs"),
+            "46m-bh-retrieve": ("before answering", "first substantive turn", "prior BrainHub memory"),
+            "46m-bh-ingest": ("raw files", "drops files", "learn next"),
+            "46m-bh-memory": ("important user-approved decisions", "propose first", "durable memory"),
+            "46m-bh-runtime": ("runtime node", "workflow artifact", "source-backed"),
         }
         passive_only_phrases = (
             "use when a user asks",

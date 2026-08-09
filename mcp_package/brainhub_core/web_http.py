@@ -1,7 +1,19 @@
-"""Shared local HTTP guard helpers for BrainHub's web viewer."""
+"""Shared local HTTP guard and transport helpers for BrainHub's web viewer.
+
+Two layers live here. The guards (host/CSP/path validation, rate limiting) decide
+whether a request is allowed; the transport pieces at the bottom decide how many
+requests can be in flight at once. Both are shared so ``serve.py`` stays a thin
+adapter over them.
+"""
 from __future__ import annotations
 
+import os
+import queue
+import socketserver
+import sys
+import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable, Mapping
 from urllib.parse import unquote, urlsplit
@@ -292,3 +304,185 @@ def resolve_raw_static_path(
     if not content_type:
         return None, None
     return resolved, content_type
+
+
+# ---------------------------------------------------------------------------
+# Transport sizing: how many readers the local viewer can serve at once.
+#
+# The stdlib defaults are wrong for this traffic shape in two ways, and both
+# show up as "the viewer won't connect" rather than as an HTTP error:
+#
+# * ``socketserver`` gives the accept queue 5 slots. One page view opens a burst
+#   of parallel connections, so a handful of simultaneous readers overflows it,
+#   and an overflowed queue means the kernel silently drops the SYN -- the
+#   browser then stalls on a ~1s retransmit with no status code anywhere.
+# * ``BaseHTTPRequestHandler`` speaks HTTP/1.0, so the socket closes after every
+#   response and one page view costs a fresh connection per request.
+#
+# Measured with 30 simultaneous readers: the defaults dropped 896 SYNs and failed
+# 34% of requests; the values below dropped none and failed none.
+# ---------------------------------------------------------------------------
+
+ACCEPT_BACKLOG_ENV = "BRAINHUB_ACCEPT_BACKLOG"
+MAX_WORKERS_ENV = "BRAINHUB_MAX_WORKERS"
+REQUEST_TIMEOUT_ENV = "BRAINHUB_REQUEST_TIMEOUT"
+KEEPALIVE_IDLE_TIMEOUT_ENV = "BRAINHUB_KEEPALIVE_IDLE_TIMEOUT"
+
+
+def env_bounded_int(
+    name: str,
+    default: int,
+    min_value: int,
+    max_value: int,
+    environ: Mapping[str, str] | None = None,
+) -> int:
+    """Read a bounded integer from the environment, ignoring anything unusable.
+
+    Deliberately total: an operator who exports a typo gets the default and a
+    working viewer, not a server that refuses to boot. Shares
+    :func:`parse_bounded_int` with the query-parameter path so "what counts as a
+    valid bounded int" is defined once.
+    """
+    source = os.environ if environ is None else environ
+    raw = source.get(name, "")
+    if isinstance(raw, str):
+        raw = raw.strip()
+    value, error = parse_bounded_int(raw, name, default, min_value, max_value)
+    if error is not None or value is None:
+        return default
+    return value
+
+
+@dataclass(frozen=True)
+class ViewerTransportConfig:
+    """Socket-layer sizing for the local viewer, overridable per deployment.
+
+    Every field is a ceiling or a timeout rather than a behaviour switch, so a
+    larger deployment scales by raising numbers instead of taking a different
+    code path.
+    """
+
+    accept_backlog: int = 512
+    max_workers: int = 128
+    request_timeout_seconds: int = 15
+    keepalive_idle_timeout_seconds: int = 5
+
+    @classmethod
+    def from_env(cls, environ: Mapping[str, str] | None = None) -> ViewerTransportConfig:
+        defaults = cls()
+        return cls(
+            # A queue depth, so unused slots cost nothing; the ceiling stays under
+            # the usual net.core.somaxconn of 4096, above which the kernel would
+            # silently clamp it anyway.
+            accept_backlog=env_bounded_int(
+                ACCEPT_BACKLOG_ENV, defaults.accept_backlog, 8, 4096, environ
+            ),
+            # One worker serves one connection at a time, so this bounds
+            # concurrent *connections*, not readers: a reader's page-load burst
+            # reuses its keep-alive connections instead of adding workers.
+            # Measured peak was ~75 workers for 50 simultaneous readers.
+            max_workers=env_bounded_int(
+                MAX_WORKERS_ENV, defaults.max_workers, 1, 4096, environ
+            ),
+            request_timeout_seconds=env_bounded_int(
+                REQUEST_TIMEOUT_ENV, defaults.request_timeout_seconds, 1, 600, environ
+            ),
+            # Long enough to cover a browser's page-load burst, short enough that
+            # workers recycle instead of one being parked per open tab.
+            keepalive_idle_timeout_seconds=env_bounded_int(
+                KEEPALIVE_IDLE_TIMEOUT_ENV, defaults.keepalive_idle_timeout_seconds, 1, 600, environ
+            ),
+        )
+
+
+class BoundedThreadPoolTCPServer(socketserver.TCPServer):
+    """Concurrent TCP server whose worker count has a ceiling.
+
+    ``ThreadingMixIn`` is the usual way to get concurrency here, but it spawns one
+    thread per connection with no limit, so a burst of readers -- or one client
+    holding connections open -- grows the thread count without bound. This serves
+    connections from a pool instead: predictable memory and scheduling, and the
+    deep accept backlog absorbs anything that arrives while every worker is busy.
+
+    Subclasses supply :attr:`transport`; ``allow_reuse_address`` and
+    ``daemon_threads`` keep the restart-friendly behaviour of the stdlib servers.
+    """
+
+    daemon_threads = True
+    allow_reuse_address = True
+    transport = ViewerTransportConfig()
+
+    def __init__(self, *args, transport: ViewerTransportConfig | None = None, **kwargs):
+        if transport is not None:
+            self.transport = transport
+        # TCPServer.__init__ binds and listens, reading request_queue_size as it
+        # goes, so the backlog has to be in place before we call up.
+        self.request_queue_size = self.transport.accept_backlog
+        self._pending: queue.SimpleQueue = queue.SimpleQueue()
+        self._pool_lock = threading.Lock()
+        self._worker_count = 0
+        self._idle_workers = 0
+        super().__init__(*args, **kwargs)
+
+    @property
+    def max_workers(self) -> int:
+        return self.transport.max_workers
+
+    def process_request(self, request, client_address):
+        """Hand the connection to the pool instead of spawning a thread for it.
+
+        A worker is added only when every existing one is busy, so a quiet server
+        keeps a couple of threads while a busy one grows to the ceiling and stops.
+        Connections arriving with the pool saturated wait in the queue rather than
+        being refused.
+        """
+        with self._pool_lock:
+            spawn = self._idle_workers == 0 and self._worker_count < self.max_workers
+            if spawn:
+                self._worker_count += 1
+        self._pending.put((request, client_address))
+        if spawn:
+            threading.Thread(target=self._worker_loop, daemon=self.daemon_threads).start()
+
+    def _worker_loop(self) -> None:
+        # Workers live for the server's lifetime once created. Retiring them on an
+        # idle timer would race with process_request's decision not to spawn (it
+        # may have just counted this worker as available), and the losing outcome
+        # is a connection parked in the queue with nobody left to serve it. Idle
+        # threads are cheap; a stranded reader is not.
+        while True:
+            with self._pool_lock:
+                self._idle_workers += 1
+            item = self._pending.get()
+            with self._pool_lock:
+                self._idle_workers -= 1
+            if item is None:
+                with self._pool_lock:
+                    self._worker_count -= 1
+                return
+            request, client_address = item
+            try:
+                self.finish_request(request, client_address)
+            except Exception:
+                self.handle_error(request, client_address)
+            finally:
+                self.shutdown_request(request)
+
+    def handle_error(self, request, client_address):
+        """Stay quiet about the ways a browser normally goes away.
+
+        Readers close tabs mid-response and keep-alive connections lapse. At one
+        traceback each that noise would bury a real error.
+        """
+        if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError, TimeoutError)):
+            return
+        super().handle_error(request, client_address)
+
+    def server_close(self):
+        # Release the workers before the socket goes away, so a server restarted
+        # in the same process does not leave them parked on a dead queue.
+        with self._pool_lock:
+            parked = self._worker_count
+        for _ in range(parked):
+            self._pending.put(None)
+        super().server_close()

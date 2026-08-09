@@ -7,12 +7,15 @@ external services.
 
 - **Zero dependencies.** The engine, CLI, and web viewer run on Python 3.10+
   standard library alone. No database server, no vector store, no cloud.
-  ⚠ One exception, and it is only visible to your reader: embedding a **CJK**
-  face into `--profile a4` output needs `fontTools` (`pip install fonttools`).
-  Without it the document renders and looks correct on your machine — which has
-  system CJK fonts — while the copy you send falls back to whatever the
-  recipient happens to have. Rendering CJK without it prints a warning to
-  stderr; do not ignore it for anything client-facing.
+- **Chinese output is correct on the recipient's machine, not just yours.** A
+  Noto Sans CJK TC subset ships in the package — Big5 plus 99.8% of CJK Ext-A —
+  and is embedded into every document that contains CJK, subset to the characters
+  that document uses. This is not a typography nicety: a document that falls back
+  to the reader's fonts loses CJK bold silently *and* can record a different
+  codepoint in the PDF text layer, so the page looks perfect while the client
+  cannot search it. You can never see either failure on your own screen — your
+  machine has system CJK fonts. If a character falls outside the shipped
+  coverage, it is named on stderr rather than dropped quietly.
 - **One workspace = one directory.** Wiki pages are Markdown; artifacts are
   self-contained HTML files; provenance rides in sidecar JSON. `tar` it, `grep`
   it, back it up like any folder.
@@ -23,10 +26,14 @@ external services.
 ## Requirements
 
 - Python 3.10+ (standard library only)
-- Optional: Chrome/Chromium wrapper for server-side PDF export
-  (`BRAINHUB_CHROME_PDF`, see White-label & configuration)
-- Optional: `pip install ./mcp_package` for the stdio MCP server
-  (only dependency: `mcp>=1.0.0`)
+- Optional: Chrome/Chromium for server-side PDF export — found on PATH
+  automatically; override with `BRAINHUB_CHROME_PDF` (see White-label &
+  configuration)
+- Optional: `pip install ./mcp_package` for the stdio MCP server. It pulls
+  `mcp`, the Markdown stack, and `fonttools`/`brotli` — the last two subset the
+  shipped CJK face per document, and are hard dependencies rather than an extra
+  because "Chinese PDFs whose text layer cannot be searched" is not a degraded
+  mode anyone should be able to install into by omission.
 
 ## Install
 
@@ -85,9 +92,11 @@ bh render report.md out.html
 bh export artifacts/html/report.html ~/team-brain --target ./deliverable.html
 ```
 
-The viewer's "download PDF" button uses a server-side Chrome wrapper when
-`BRAINHUB_CHROME_PDF` is configured; without it, everything except PDF export
-works normally.
+The viewer's "download PDF" button drives a Chromium-family browser found on
+PATH. Point `BRAINHUB_CHROME_PDF` at a wrapper script taking
+`(src.html, out.pdf, timeout_ms)` to use house print settings instead. With
+neither available the button reports which of the two to fix; everything except
+PDF export works normally.
 
 ## Hooking up AI agents
 
@@ -102,21 +111,49 @@ pip install ./mcp_package
 
 **Claude Code skills:** copy or symlink the directories under `skills/` into
 `~/.claude/skills/`. They teach agents when and how to retrieve context
-(`brainhub-retrieve`), persist decisions (`brainhub-memory`), ingest raw files
-(`brainhub-ingest`), self-check the workspace (`brainhub-health`), and manage
-artifacts (`brainhub-runtime`).
+(`46m-bh-retrieve`), persist decisions (`46m-bh-memory`), ingest raw files
+(`46m-bh-ingest`), self-check the workspace (`46m-bh-health`), and manage
+artifacts (`46m-bh-runtime`).
 
 ## White-label & configuration
 
 Everything brand-specific is replaceable at deploy time; nothing requires a
 code change:
 
+BrainHub ships **with** a brand theme rather than unbranded. To put your own
+corporate identity on it, point one variable at a directory — colours, logo and
+fonts swap together:
+
+```bash
+export BRAINHUB_BRAND_DIR=~/my-brand
+#   my-brand/tokens.css    colour/spacing tokens — the usual swap point
+#   my-brand/logo.svg      header + document lockup
+#   my-brand/fonts/        .woff2 / .ttf faces to embed
+#   my-brand/daisyui.css   optional; only if you rebuilt the component sheet
+```
+
+A pack only has to provide what it wants to change: anything absent falls back to
+the per-asset variable below, then to the bundled theme, then to nothing at all —
+a missing asset never raises. daisyUI's themes map onto the same token names, so
+replacing `tokens.css` alone recolours the components too, and all 13 chart
+renderers with them.
+
+Chart **series** colours are a separate decision. `--series-1`..`--series-8` ship
+as a colourblind-validated palette that deliberately contains no status colours, so
+series 2 never reads as "good" and series 3 never as "warning". A pack's
+`tokens.css` is applied after the built-in one and so *can* redefine them — do that
+only if the replacements are checked for distinguishability, because a brand
+palette that looks handsome in a logo often collapses into two shades of the same
+hue in a stacked bar.
+
 | What | How |
 |---|---|
+| Whole corporate identity at once | `BRAINHUB_BRAND_DIR=/path/to/brand-pack` |
 | Logo in rendered documents/PDFs | Replace `mcp_package/brainhub_core/vendor/brand-logo.svg`, or set `BRAINHUB_BRAND_LOGO=/path/to/logo.svg` |
 | Logo in the web viewer | Drop `logo.svg` in the workspace root (served at `/logo.svg`) |
-| Embedded fonts in client-facing renders | `BRAINHUB_BRAND_FONTS=/path/to/fonts-dir` (`.ttf`/`.woff2`; absent → graceful no-embed) |
-| PDF export | `BRAINHUB_CHROME_PDF=/path/to/chrome-wrapper` |
+| Embedded Latin fonts in client-facing renders | `BRAINHUB_BRAND_FONTS=/path/to/fonts-dir` (`.ttf`/`.woff2`; absent → graceful no-embed) |
+| CJK fonts | Nothing to configure. A Noto Sans CJK TC subset ships in `vendor/` (Big5 + 99.8% of Ext-A) and is embedded automatically, subset to each document. A character outside that coverage is reported on stderr, never dropped silently. |
+| PDF export | Nothing to configure if a Chromium-family browser is installed; it is found on PATH. Override with `BRAINHUB_CHROME_PDF=/path/to/chrome-wrapper` taking `(src.html, out.pdf, timeout_ms)`. |
 | Default workspace | `BRAINHUB_HOME=/path/to/workspace` |
 
 ## Deployment model
@@ -126,10 +163,35 @@ BrainHub is designed for a **trusted private LAN**. The viewer binds
 reach it. Write endpoints assume every caller on the network is trusted — do
 not expose the port to the public internet.
 
+### Sizing the viewer for a team
+
+The viewer serves concurrent readers from a bounded worker pool. The defaults are
+sized for a few dozen simultaneous readers and need no tuning; raise them for a
+larger deployment. Anything unparseable falls back to the default rather than
+refusing to start.
+
+| Variable | Default | What it bounds |
+|---|---|---|
+| `BRAINHUB_ACCEPT_BACKLOG` | 512 | Queue depth for connections waiting to be accepted |
+| `BRAINHUB_MAX_WORKERS` | 128 | Concurrent connections served at once |
+| `BRAINHUB_REQUEST_TIMEOUT` | 15 | Seconds a single request may take |
+| `BRAINHUB_KEEPALIVE_IDLE_TIMEOUT` | 5 | Seconds an idle keep-alive connection holds a worker |
+| `BRAINHUB_MUTATION_RATE_LIMIT` | 180 | Writes allowed per client IP per window |
+| `BRAINHUB_MUTATION_RATE_WINDOW` | 60 | Seconds in that window |
+
+Behind a reverse proxy every reader arrives as the proxy's single address, so they
+share one write budget — raise `BRAINHUB_MUTATION_RATE_LIMIT` for shared access.
+
+Verify capacity on your own hardware rather than trusting the defaults:
+
+```bash
+python3 scripts/loadtest_http_viewer.py --users 30
+```
+
 ## Maintainer notes
 
 ```bash
-python3 -m pytest tests/            # 946 tests, stdlib + pytest only
+python3 -m unittest discover -s tests   # 1085 tests, stdlib only (pytest works too)
 ```
 
 - `brainhub.py` — product CLI (publish/read/search/link/build/render/export);

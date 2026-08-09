@@ -11,7 +11,7 @@ def _shell_words(*parts: object) -> str:
     if not words:
         return ""
     if len(words) >= 2 and words[0].startswith("python") and words[1] == "brainhub_engine.py":
-        return display_command(["link", *words[2:]])
+        return display_command(["bh", *words[2:]])
     return display_command(words)
 
 

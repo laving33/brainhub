@@ -10,6 +10,14 @@ from typing import Any
 from .files import atomic_write_json, atomic_write_text
 from .mcp_verify import display_command, normalize_command_parts, resolve_mcp_python
 
+# The key BrainHub's MCP server is registered under in an agent's config, which is
+# also what the agent's tool names are built from (``mcp__46m-bh__recall``). One
+# constant because it has to match across every config format we write.
+MCP_SERVER_KEY = "46m-bh"
+# The key used before the rename off the forked project's name. Only ever removed,
+# never written: connecting cleans it up so no stale duplicate server is left behind.
+_LEGACY_MCP_SERVER_KEY = "link"
+
 
 @dataclass(frozen=True)
 class AgentMcpConfig:
@@ -118,14 +126,14 @@ def _server_config(config: AgentMcpConfig, python_cmd: str, wiki_dir: Path) -> d
 def _json_config(config: AgentMcpConfig, python_cmd: str, wiki_dir: Path) -> dict[str, object]:
     return {
         config.top_key: {
-            "link": _server_config(config, python_cmd, wiki_dir),
+            MCP_SERVER_KEY: _server_config(config, python_cmd, wiki_dir),
         }
     }
 
 
 def _codex_toml_snippet(python_cmd: str, wiki_dir: Path) -> str:
     return "\n".join([
-        "[mcp_servers.link]",
+        f"[mcp_servers.{MCP_SERVER_KEY}]",
         f"command = {json.dumps(python_cmd)}",
         f'args = ["-m", "brainhub_mcp", "--wiki", {json.dumps(str(wiki_dir))}, "--surface", "slim"]',
     ])
@@ -146,7 +154,10 @@ def _write_json_config(path: Path, config: AgentMcpConfig, python_cmd: str, wiki
     existing = payload.get(config.top_key)
     if not isinstance(existing, dict):
         existing = {}
-    existing["link"] = _server_config(config, python_cmd, wiki_dir)
+    # Drop the pre-rename entry rather than leaving it beside the new one: two
+    # keys pointing at the same server would show the agent duplicate tools.
+    existing.pop(_LEGACY_MCP_SERVER_KEY, None)
+    existing[MCP_SERVER_KEY] = _server_config(config, python_cmd, wiki_dir)
     payload[config.top_key] = existing
     atomic_write_json(path, payload)
 
@@ -154,7 +165,15 @@ def _write_json_config(path: Path, config: AgentMcpConfig, python_cmd: str, wiki
 def _write_codex_config(path: Path, python_cmd: str, wiki_dir: Path) -> None:
     block = _codex_toml_snippet(python_cmd, wiki_dir) + "\n"
     text = path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
-    pattern = re.compile(r"(?ms)^\[mcp_servers\.link\]\r?\n.*?(?=^\[|\Z)")
+    # Matches the current block or the pre-rename one, so reconnecting replaces a
+    # legacy section instead of appending a second server next to it.
+    pattern = re.compile(
+        r"(?ms)^\[mcp_servers\.(?:"
+        + re.escape(MCP_SERVER_KEY)
+        + "|"
+        + re.escape(_LEGACY_MCP_SERVER_KEY)
+        + r")\]\r?\n.*?(?=^\[|\Z)"
+    )
     if pattern.search(text):
         text = pattern.sub(block, text)
         if not text.endswith("\n"):

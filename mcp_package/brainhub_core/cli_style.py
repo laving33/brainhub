@@ -18,7 +18,7 @@ CYAN = "\033[36m"
 def supports_color(stream: TextIO | None = None) -> bool:
     """Return whether human CLI output should include ANSI styling."""
     stream = stream or sys.stdout
-    if os.environ.get("NO_COLOR") or os.environ.get("LINK_PLAIN"):
+    if os.environ.get("NO_COLOR") or os.environ.get("BRAINHUB_PLAIN"):
         return False
     if os.environ.get("CLICOLOR") == "0":
         return False

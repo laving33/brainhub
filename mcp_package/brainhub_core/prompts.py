@@ -68,14 +68,14 @@ def starter_prompt_payload(target: Path, project: str | None = None) -> dict[str
     return {
         "target": str(target),
         "project": project_name,
-        "shortcut": display_command(["link", "next", command_target]),
+        "shortcut": display_command(["bh", "next", command_target]),
         "prompts": prompts,
         "commands": [
-            display_command(["link", "seed", ".", command_target]),
-            display_command(["link", "health", command_target]),
-            display_command(["link", "ingest-status", command_target]),
-            display_command(["link", "memory-inbox", command_target]),
-            display_command(["link", "benchmark", "agent memory", command_target]),
+            display_command(["bh", "seed", ".", command_target]),
+            display_command(["bh", "health", command_target]),
+            display_command(["bh", "ingest-status", command_target]),
+            display_command(["bh", "memory-inbox", command_target]),
+            display_command(["bh", "benchmark", "agent memory", command_target]),
         ],
     }
 
@@ -106,10 +106,10 @@ def welcome_payload(target: Path, project: str | None = None) -> dict[str, objec
         "project": starter["project"],
         "steps": steps,
         "commands": [
-            display_command(["link", "health", command_target]),
-            display_command(["link", "serve", command_target]),
-            display_command(["link", "ingest-status", command_target]),
-            display_command(["link", "prompts", command_target]),
+            display_command(["bh", "health", command_target]),
+            display_command(["bh", "serve", command_target]),
+            display_command(["bh", "ingest-status", command_target]),
+            display_command(["bh", "prompts", command_target]),
         ],
         "urls": [
             "http://127.0.0.1:3000",

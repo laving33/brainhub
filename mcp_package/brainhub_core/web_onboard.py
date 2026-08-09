@@ -33,8 +33,8 @@ def _command_row(command: str, label: str = "複製") -> str:
 def _agent_cards(target: str, agents: Sequence[str]) -> str:
     cards = ""
     for agent in agents:
-        preview = display_command(["link", "onboard", target, "--agent", agent])
-        write = display_command(["link", "onboard", target, "--agent", agent, "--write"])
+        preview = display_command(["bh", "onboard", target, "--agent", agent])
+        write = display_command(["bh", "onboard", target, "--agent", agent, "--write"])
         cards += (
             '<article class="onboard-agent-card">'
             f"<h3>{html.escape(agent)}</h3>"
@@ -82,10 +82,10 @@ def render_onboard_page(
     ready = bool(status.get("ready"))
     validation = status.get("validation") if isinstance(status.get("validation"), Mapping) else {}
     validation_label = "已通過" if validation.get("passed") else ("未通過" if validation.get("checked") else "尚未檢查")
-    health_command = display_command(["link", "health", command_target])
-    onboard_command = display_command(["link", "onboard", command_target])
-    seed_onboard_command = display_command(["link", "onboard", command_target, "--seed-project", "."])
-    seed_command = display_command(["link", "seed", ".", command_target])
+    health_command = display_command(["bh", "health", command_target])
+    onboard_command = display_command(["bh", "onboard", command_target])
+    seed_onboard_command = display_command(["bh", "onboard", command_target, "--seed-project", "."])
+    seed_command = display_command(["bh", "seed", ".", command_target])
     first_memory_command = display_command([
         "link",
         "onboard",
@@ -93,9 +93,9 @@ def render_onboard_page(
         "--first-memory",
         "I prefer concise release notes",
     ])
-    brief_command = display_command(["link", "brief", "working with BrainHub", command_target])
-    ingest_command = display_command(["link", "ingest-status", command_target])
-    memory_inbox_command = display_command(["link", "memory-inbox", command_target])
+    brief_command = display_command(["bh", "brief", "working with BrainHub", command_target])
+    ingest_command = display_command(["bh", "ingest-status", command_target])
+    memory_inbox_command = display_command(["bh", "memory-inbox", command_target])
 
     stats = render_stat_grid([
         ("是" if ready else "否", "就緒"),

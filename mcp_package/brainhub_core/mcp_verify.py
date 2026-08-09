@@ -9,37 +9,44 @@ from pathlib import Path
 from typing import Callable, Mapping
 
 
-PREFERRED_LINK_COMMAND = "bh"
-LEGACY_LINK_COMMAND = "link"
-_link_command_override: list[str] | None = None
+BH_COMMAND = "bh"
+_bh_command_override: list[str] | None = None
 
 
-def set_link_command_override(parts: list[str] | tuple[str, ...] | None) -> None:
+def set_bh_command_override(parts: list[str] | tuple[str, ...] | None) -> None:
     """Override generated BrainHub CLI commands for the current runtime."""
-    global _link_command_override
+    global _bh_command_override
     if parts is None:
-        _link_command_override = None
+        _bh_command_override = None
         return
     cleaned = [str(part) for part in parts if str(part)]
-    _link_command_override = cleaned or None
+    _bh_command_override = cleaned or None
 
 
-def _configured_link_command() -> list[str]:
-    if _link_command_override:
-        return list(_link_command_override)
-    env_command = os.environ.get("LINK_CLI_COMMAND", "").strip()
+def _configured_bh_command() -> list[str]:
+    """How BrainHub is invoked here: explicit override, env, else plain ``bh``."""
+    if _bh_command_override:
+        return list(_bh_command_override)
+    env_command = os.environ.get("BRAINHUB_CLI_COMMAND", "").strip()
     if env_command:
         return [env_command]
-    return [PREFERRED_LINK_COMMAND]
+    return [BH_COMMAND]
 
 
 def normalize_command_parts(parts: list[str]) -> list[str]:
-    """Use BrainHub's non-conflicting CLI command name in generated user commands."""
-    if parts and parts[0] == LEGACY_LINK_COMMAND:
-        return [*_configured_link_command(), *parts[1:]]
-    if parts and parts[0] == PREFERRED_LINK_COMMAND and _link_command_override:
-        return [*_configured_link_command(), *parts[1:]]
-    return list(parts)
+    """Rewrite the leading ``bh`` in a generated command to whatever runs it here.
+
+    Callers write commands as ``["bh", "health", target]``; a source checkout or a
+    BRAINHUB_CLI_COMMAND override turns that into the interpreter invocation the
+    reader can actually paste. Anything not starting with ``bh`` is left alone, so
+    passing a python path or an unrelated tool through is safe.
+    """
+    if not parts or parts[0] != BH_COMMAND:
+        return list(parts)
+    configured = _configured_bh_command()
+    if configured == [BH_COMMAND]:
+        return list(parts)
+    return [*configured, *parts[1:]]
 
 
 def display_command(parts: list[str]) -> str:

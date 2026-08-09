@@ -35,7 +35,8 @@ import sys
 import time
 from pathlib import Path
 
-from brainhub_core.version import LINK_VERSION
+from brainhub_core.config import default_workspace as _default_workspace
+from brainhub_core.version import BRAINHUB_VERSION
 
 # ── Resolve wiki directory ────────────────────────────────────────────
 # The parser keeps add_help=False and parse_known_args so an agent launch
@@ -62,13 +63,13 @@ parser.add_argument("--semantic-setup", action="store_true")
 args, _ = parser.parse_known_args()
 
 if args.version:
-    print(f"brainhub-mcp {LINK_VERSION}")
+    print(f"brainhub-mcp {BRAINHUB_VERSION}")
     sys.exit(0)
 
 if args.wiki:
     WIKI_DIR = Path(args.wiki).expanduser().resolve()
 else:
-    WIKI_DIR = Path.home() / "link" / "wiki"
+    WIKI_DIR = _default_workspace() / "wiki"
 
 if args.semantic_setup:
     # One-time explicit opt-in for MCP-only installs (no `bh` CLI): fetch
@@ -101,7 +102,7 @@ if args.semantic_setup:
     print(f"[brainhub-mcp] Semantic recall ready: indexed {len(setup_items)} memories.")
     sys.exit(0)
 
-MCP_SURFACE = (args.surface or os.environ.get("LINK_MCP_SURFACE") or "slim").strip().lower()
+MCP_SURFACE = (args.surface or os.environ.get("BRAINHUB_MCP_SURFACE") or "slim").strip().lower()
 if MCP_SURFACE not in {"full", "slim"}:
     print(
         f"[brainhub-mcp] Invalid surface {MCP_SURFACE!r}. Use --surface full or --surface slim.",
@@ -572,7 +573,7 @@ def _validate_wiki(strict: bool = False) -> dict[str, object]:
 
 
 def _package_version() -> str:
-    return LINK_VERSION
+    return BRAINHUB_VERSION
 
 
 def _link_status(include_validation: bool = False) -> dict[str, object]:

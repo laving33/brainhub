@@ -63,7 +63,7 @@ def render_ingest_page(
         first_raw,
         ingest_prompt,
         optional_memory_html,
-        validate_command=_link_command(command_target, "validate"),
+        validate_command=_bh_command(command_target, "validate"),
     )
     pending_html = _render_pending(pending, represented)
     notes_html = _render_notes(notes)
@@ -194,23 +194,23 @@ def _render_next_step(
         next_extra = ""
     elif state == "blocked_source_access":
         next_detail = "在信任匯入狀態之前，先修好來源頁面的存取權限。BrainHub 無法讀取已代表的來源頁面。"
-        next_code = _first_command(commands, _link_command(command_target, "ingest-status"))
+        next_code = _first_command(commands, _bh_command(command_target, "ingest-status"))
         next_extra = ""
     elif state == "stale_graph":
         next_detail = "在信任搜尋、脈絡或圖譜檢視之前，先修復圖譜索引。這步之後再執行下面剩下的檢查。"
-        next_code = _first_command(commands, _link_command(command_target, "rebuild-backlinks"))
+        next_code = _first_command(commands, _bh_command(command_target, "rebuild-backlinks"))
         next_extra = ""
     elif state == "empty":
         next_detail = "在 raw/ 加入一份筆記、文章、逐字稿或專案檔案，然後重新整理這個頁面。"
-        next_code = _link_command(command_target, "ingest-status")
+        next_code = _bh_command(command_target, "ingest-status")
         next_extra = ""
     elif state == "ready":
         next_detail = "目前沒有待匯入的內容。可以請 BrainHub 提供脈絡，或在有新素材時再加一份來源。"
-        next_code = _link_command(command_target, "brief", "current task")
+        next_code = _bh_command(command_target, "brief", "current task")
         next_extra = ""
     else:
         next_detail = "在匯入來源之前，先初始化或修復 BrainHub 資料夾。"
-        next_code = _first_command(commands, _link_command(command_target, "init"))
+        next_code = _first_command(commands, _bh_command(command_target, "init"))
         next_extra = ""
 
     ingest_prompt = agent_prompt or f"把 {first_raw} 匯入 BrainHub"
@@ -264,8 +264,8 @@ def _first_command(commands: list[object], fallback: str) -> str:
     return fallback
 
 
-def _link_command(command_target: str, *parts: str) -> str:
-    command = ["link", *parts]
+def _bh_command(command_target: str, *parts: str) -> str:
+    command = ["bh", *parts]
     if command_target:
         command.append(command_target)
     return display_command(command)

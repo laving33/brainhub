@@ -4,14 +4,19 @@ Internal MCP server for BrainHub workspaces. It exposes local memories, wiki
 context, and BrainHub artifact provenance without reading artifact bodies
 directly.
 
-## Legacy module names
+## Names
 
-The Python module, `bh` command, and default `~/.brainhub/wiki` path are legacy
-internal names inherited from the codebase BrainHub was forked from. BrainHub
-Runtime Node installations use `brainhub.py`, `~/.brainhub`, and a local MCP
-client entry named `brainhub`.
+The CLI is `bh` (`brainhub.py` in a source checkout), the default workspace is
+`~/.brainhub` with its wiki at `~/.brainhub/wiki`, and the MCP server registers in
+agent configs under the key `46m-bh` — so its tools appear to agents as
+`mcp__46m-bh__*`.
 
-This package is internal to aworkr. It is not published to PyPI or listed on any
+All four replaced names inherited from the project BrainHub was forked from, as of
+2.0.0. If an agent config still carries the old `link` server entry, re-running
+`bh connect <agent>` migrates it: the old key is removed rather than left beside
+the new one, which would otherwise register the same server twice.
+
+This package is internal to 46m. It is not published to PyPI or listed on any
 public MCP registry.
 
 ## What You Need
@@ -22,20 +27,20 @@ wiki location is `~/.brainhub/wiki`, created by the main BrainHub installers.
 Recommended setup:
 
 ```bash
-# The engine lives at tools/brainhub in the aworkr monorepo.
-cd /home/aworkr/aworkr/tools/brainhub
+# The engine lives at tools/brainhub in the 46m monorepo.
+cd /path/to/46m/tools/brainhub
 ```
 
-The installer scaffolds `~/link/`, installs or upgrades `brainhub-mcp`, writes agent
+The installer scaffolds `~/.brainhub/`, installs or upgrades `brainhub-mcp`, writes agent
 instructions, and prints the exact MCP config for your machine.
 
 If BrainHub is already installed and you only need to wire MCP into an agent, use
 the CLI helper from the main BrainHub package:
 
 ```bash
-link connect codex ~/link
-link connect codex ~/link --write
-link verify-mcp ~/link
+bh connect codex ~/.brainhub
+bh connect codex ~/.brainhub --write
+bh verify-mcp ~/.brainhub
 ```
 
 After install, ask your agent:
@@ -49,7 +54,7 @@ query BrainHub for what you know about this project
 CLI-first agents and BrainHub skills can run the same startup loop directly:
 
 ```bash
-bh start ~/link --task "working on BrainHub release"
+bh start ~/.brainhub --task "working on BrainHub release"
 ```
 
 ## MCP-Only Install
@@ -80,9 +85,9 @@ Then add the server to your MCP client config. Use an absolute wiki path:
 ```json
 {
   "mcpServers": {
-    "link": {
+    "46m-bh": {
       "command": "python3",
-      "args": ["-m", "brainhub_mcp", "--wiki", "/Users/YOU/link/wiki", "--surface", "slim"]
+      "args": ["-m", "brainhub_mcp", "--wiki", "/Users/YOU/.brainhub/wiki", "--surface", "slim"]
     }
   }
 }
@@ -93,9 +98,9 @@ If you installed into the venv, use the venv Python:
 ```json
 {
   "mcpServers": {
-    "link": {
+    "46m-bh": {
       "command": "/Users/YOU/.brainhub-mcp-venv/bin/python",
-      "args": ["-m", "brainhub_mcp", "--wiki", "/Users/YOU/link/wiki", "--surface", "slim"]
+      "args": ["-m", "brainhub_mcp", "--wiki", "/Users/YOU/.brainhub/wiki", "--surface", "slim"]
     }
   }
 }
@@ -152,7 +157,7 @@ BrainHub also exposes MCP prompts `link_start`, `link_brief`, `link_remember`,
 readiness, run a brief recall once, then use bounded recall before broad context
 reads. If recall finds no useful project context, agents can call
 `admin(action="seed_project", arguments="{\"project_root\":\"/absolute/project/path\"}")`
-or ask the user to run `bh seed . ~/link` from the repo before retrying recall.
+or ask the user to run `bh seed . ~/.brainhub` from the repo before retrying recall.
 `link_session_end` is the matching proposal-only shutdown loop: capture
 useful session notes, return memory candidates, and wait for user approval
 before durable writes.
@@ -175,7 +180,7 @@ date, or `expires_at` for temporary context that should leave default recall
 after a date. Use `admin(action="propose_memories")` or
 `admin(action="capture_session")` / `admin(action="session_end")` for
 proposal-only review.
-For local CLI setup checks, `link verify-mcp --json` returns structured
+For local CLI setup checks, `bh verify-mcp --json` returns structured
 `issues` and `next_actions` that agents and scripts can consume without parsing
 terminal text.
 In the local web proposal picker, unreadable raw files are surfaced as
