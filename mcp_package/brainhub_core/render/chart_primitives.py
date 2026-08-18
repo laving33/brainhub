@@ -1,12 +1,14 @@
 # ─────────────────────────────────────────────────────────────
-# VENDORED into brainhub — do NOT edit here.
-#   SSoT: lab/catalog/skills/_lib/report_chart.py (ADR-0101, pack-director).
-#   Re-sync from the SSoT when catalog updates the primitives.
-#   ⚠ 這 8 行是「防漂移標記」。2026-07-12 一次 `cp` 整檔覆蓋把它洗掉了 ——
-#     用修漂移的動作，刪掉了防漂移的標記。tests/test_brand_assets.py 現在
-#     比對「檔頭以外」的位元，所以標記與位元一致性可以同時成立。
+# Owned by BrainHub. Formerly vendored from lab/catalog as a byte-frozen
+# mirror, which was the right shape while BrainHub was an aworkr tool: it had
+# to ship to machines with no aworkr checkout. It stopped being the right shape
+# once the product line separated — the SSoT is not reachable from a BrainHub
+# checkout, so its drift guard could only skip, and defects found here (an
+# unreadable <desc>, a 9th series that repeats the 1st colour, a slot order
+# that fails our own palette validator, CJK labels overflowing their gutter)
+# had nowhere to be fixed. Adopted 2026-08.
 # ─────────────────────────────────────────────────────────────
-"""report_chart.py — zero-dependency, deterministic static-SVG chart emitter.
+"""chart_primitives — zero-dependency, deterministic static-SVG chart emitter.
 
 Wave-0 render-layer enabler for the aworkr report gallery
 (data/report-gallery/37-card-viz-review-2026-07.md §5). This module is the
@@ -60,6 +62,7 @@ Self-test (doctest only, synthetic data — no tenant data per R2):
 
 from __future__ import annotations
 
+import hashlib
 import math
 from typing import Any, Mapping, Sequence
 
@@ -101,10 +104,19 @@ CHART_TYPES = frozenset({
 
 # Categorical: same eight hues, light column + dark column stepped for the dark
 # surface (NOT a separate palette). Slot ORDER is the CVD-safety mechanism.
-CAT_LIGHT = ("#2a78d6", "#1baf7a", "#eda100", "#008300",
-             "#4a3aa7", "#e34948", "#e87ba4", "#eb6834")
-CAT_DARK = ("#3987e5", "#199e70", "#c98500", "#008300",
-            "#9085e9", "#e66767", "#d55181", "#d95926")
+# The ORDER is the CVD-safety mechanism, and this order is the one that passes
+# scripts/validate_palette.py. The previous order put #e87ba4 next to #eb6834
+# (adjacent ΔE 12.9 in light, 7.8 in dark, against a floor of 15) — two slots a
+# full-colour reader cannot reliably tell apart. Same eight hues, re-seated, and
+# now identical to the shell's --series-1..8 so one dataset does not draw series
+# 2 green in one renderer and orange in another.
+CAT_LIGHT = ("#2a78d6", "#eb6834", "#1baf7a", "#eda100",
+             "#e87ba4", "#008300", "#4a3aa7", "#e34948")
+CAT_DARK = ("#3987e5", "#d95926", "#199e70", "#c98500",
+            "#d55181", "#008300", "#9085e9", "#e66767")
+# Ninth series and beyond: a neutral, so "I ran out of hues" is visible rather
+# than disguised as a repeated category.
+CAT_OTHER = "#898781"
 
 # Sequential blue ramp 100→700 (heatmap / choropleth continuous magnitude).
 SEQ_LIGHT = ("#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7",
@@ -245,9 +257,16 @@ def _fill_ring(var: str, hexc: str, ring_w: float = 2) -> str:
 
 
 def _cat(i: int, light: bool = True) -> tuple[str, str]:
-    """Return (var_name, light_hex) for categorical slot i (wraps at 8)."""
-    n = i % len(CAT_LIGHT)
-    return (f"s{n + 1}", CAT_LIGHT[n])
+    """Return (var_name, light_hex) for categorical slot i.
+
+    Past the last slot this folds to a neutral grey rather than wrapping back to
+    slot 1. Wrapping gave the 9th series the 1st series' colour, which reads as
+    "same category" — a claim about the data that is simply false. Eight
+    distinguishable hues is the honest limit; beyond it, say "other".
+    """
+    if i >= len(CAT_LIGHT):
+        return ("other", CAT_OTHER)
+    return (f"s{i + 1}", CAT_LIGHT[i])
 
 
 def _text(x: float, y: float, s: Any, *, size: int = 12, anchor: str = "start",
@@ -268,14 +287,53 @@ def _text(x: float, y: float, s: Any, *, size: int = 12, anchor: str = "start",
     )
 
 
+# Advance widths as a fraction of font size. Estimated, never measured: this
+# module is stdlib-only by design, and the font stack resolves to whatever the
+# reader's system supplies, so a "precise" number would be precise about the
+# wrong face. Rounded up, so the estimate reports overflow before a real one.
+def _estimate_text_width(text: str, size: float) -> float:
+    total = 0.0
+    for ch in text:
+        code = ord(ch)
+        if (0x1100 <= code <= 0x115F or 0x2E80 <= code <= 0xA4CF
+                or 0xAC00 <= code <= 0xD7A3 or 0xF900 <= code <= 0xFAFF
+                or 0xFE30 <= code <= 0xFE6F or 0xFF00 <= code <= 0xFF60
+                or 0xFFE0 <= code <= 0xFFE6):
+            total += 1.0
+        elif ch.isdigit():
+            total += 0.55
+        elif ch.isupper():
+            total += 0.67
+        else:
+            total += 0.5
+    return total * size
+
+
 def _svg(width: float, height: float, body: str, *, title: str, desc: str = "") -> str:
-    """Wrap primitive body in a deterministic, accessible <svg> (role=img + title/desc)."""
-    d = f"<desc>{_esc(desc)}</desc>" if desc else ""
+    """Wrap primitive body in a deterministic, accessible <svg>.
+
+    Three details, each of which was wrong while this file could not be edited:
+
+    * ``<title>`` is the FIRST child, ahead of ``<style>``. Assistive tech may
+      ignore a title placed later.
+    * ``<title>``/``<desc>`` carry ids and ``aria-labelledby`` names both. A
+      ``<desc>`` nothing references is widely not announced at all, so the
+      description — the only place the chart's numbers reach a screen reader,
+      since ``role="img"`` makes the plot's own text presentational — was
+      silently dropped.
+    * The ids are derived from the title's content, keeping the module's
+      deterministic contract (same input → byte-identical SVG) while letting
+      two charts sit on one page without the second borrowing the first's name.
+    """
+    slug = hashlib.sha256(f"{title}\x00{desc}".encode("utf-8")).hexdigest()[:8]
+    described = f' {slug}-desc' if desc else ""
+    d = f'<desc id="{slug}-desc">{_esc(desc)}</desc>' if desc else ""
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" class="viz" role="img"'
+        f' aria-labelledby="{slug}-title{described}"'
         f' viewBox="0 0 {_c(width)} {_c(height)}" width="{_c(width)}" height="{_c(height)}">'
+        f'<title id="{slug}-title">{_esc(title)}</title>{d}'
         f"<style>{_STYLE}</style>"
-        f"<title>{_esc(title)}</title>{d}"
         f'<rect x="0" y="0" width="{_c(width)}" height="{_c(height)}" {_fill("surface", _CHROME_LIGHT["surface"])}/>'
         f"{body}</svg>"
     )
@@ -436,7 +494,14 @@ def hbar(values: Sequence[float], labels: Sequence[Any], *, title: str = "Ranked
     if len(vv) != len(ll):
         raise ChartError(f"hbar got {len(vv)} values but {len(ll)} labels")
     mx = max(vv) if max(vv) > 0 else 1.0
-    W, rh, gutter = 660, 30, 150
+    W, rh = 660, 30
+    # The label gutter follows the widest label instead of a fixed 150px. A CJK
+    # glyph is a full em against roughly 0.55 for a digit, so a gutter measured
+    # against Latin numerals clipped Chinese labels at about a third as many
+    # characters — silently, with no ellipsis. Bounded so one long label cannot
+    # squeeze the bars out of existence; past the bound it still clips, but the
+    # common case stops doing so.
+    gutter = max(90.0, min(300.0, _estimate_text_width(max((str(x) for x in ll), key=len, default=""), 12) + 20))
     T, B, R = 40, 20 + (18 if truncated else 0), 70
     H = T + len(vv) * rh + B
     pw = W - gutter - R

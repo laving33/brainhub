@@ -41,8 +41,11 @@ MIRRORED = ("aworkr-logo-wordmark.svg", "aworkr-logo-primary.svg")
 # Vendoring is therefore the CORRECT shape here, not a shortcut; what it still
 # needs is this drift guard, because a frozen palette that silently disagrees with
 # the brand is the same bug as the frozen logo above.
+# report_chart.py used to be here. It is now render/chart_primitives.py, owned
+# outright: the SSoT was unreachable from a BrainHub checkout, so this guard
+# could only skip, while the "do not edit" rule it enforced still blocked every
+# fix. A guard that cannot run is not protection.
 VENDORED_CODE = {
-    "report_chart.py": Path("/home/aworkr/aworkr/lab/catalog/skills/_lib/report_chart.py"),
     "aworkr-tokens.css": Path(
         "/home/aworkr/aworkr/core/library/brand/assets/tokens/tokens.css"
     ),

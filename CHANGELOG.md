@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+### Changed — the chart primitives are ours now
+
+`vendor/report_chart.py` is now `render/chart_primitives.py`, owned outright.
+Vendoring was right while BrainHub was an aworkr tool that had to ship to
+machines with no aworkr checkout. It stopped being right once the product line
+separated: the SSoT is not reachable from a BrainHub checkout, so its drift
+guard could only skip — and the "do not edit" rule it enforced still blocked
+every fix. A guard that cannot run is not protection; it is a rule with no
+remaining reason.
+
+Four defects that had nowhere to be fixed, now fixed:
+
+- **The `<desc>` never reached a screen reader.** `<title>` sat after `<style>`
+  instead of first, neither carried an id, and nothing referenced them — a
+  `<desc>` nothing points at is widely not announced. Since `role="img"` makes
+  the plot's own text presentational, that description was the only route the
+  numbers had. Ids are derived from the title's content, so the module's
+  byte-identical-output contract still holds.
+- **The 9th series repeated the 1st series' colour**, which reads as "same
+  category" — a false claim about the data. It now folds to a neutral.
+- **The slot order failed our own palette validator** (adjacent ΔE 12.9 light,
+  7.8 dark, against a floor of 15). The same eight hues, re-seated to the order
+  that passes both modes — which is also the shell's order, so one dataset no
+  longer draws series 2 green in one renderer and orange in another.
+- **Chinese labels were clipped.** The `hbar` label gutter was a fixed 150px
+  measured against Latin numerals; a CJK glyph is a full em against roughly
+  0.55 for a digit, so Chinese labels ran out of room at about a third as many
+  characters, with no ellipsis to show it. The gutter now follows the widest
+  label, bounded so one long label cannot squeeze out the bars.
+
+
 ### Fixed — discoverability and the Skill contract
 
 Audited against Anthropic's published Agent Skills specification and authoring

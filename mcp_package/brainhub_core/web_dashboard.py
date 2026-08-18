@@ -70,7 +70,7 @@ from .ui_classes import (
     STAT_VALUE,
     STATS,
 )
-from .vendor import report_chart as _rc
+from .render import chart_primitives as _rc
 
 
 # A day and a half of silence is the point where "nobody updated it yet today"

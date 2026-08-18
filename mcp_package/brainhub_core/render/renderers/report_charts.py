@@ -1,5 +1,5 @@
-"""Report-chart renderers — brainhub build kinds backed by the vendored
-``report_chart`` primitives (SSoT: lab/catalog ``report_chart.py``, ADR-0101).
+"""Report-chart renderers — brainhub build kinds backed by the
+``chart_primitives`` SVG emitter.
 
 Each kind maps a JSON spec straight to a self-contained SVG via
 ``report_chart.<fn>(**spec)`` — the spec's keys ARE the function's kwargs. The
@@ -12,23 +12,16 @@ Naming follows the mainstream/public term first, then our own (owner ruling
 different spec shape and answer a different question (numeric x axis, grouped
 multi-series) — see their modules.
 
-Two things the vendored SVG gets wrong for an artifact, both corrected here in
-CSS because the vendored file is a byte-frozen mirror we must not edit:
-
-* **Theme.** Its ``<style>`` themes off ``prefers-color-scheme`` alone, while
-  BrainHub's theme is an explicit ``[data-theme]`` attribute the reader sets.
-  Toggling the page to dark left every report chart a white block on a dark
-  page (verified by screenshot, 2026-08-19).
-* **Series slot order.** It bakes its own ``--s1``..``--s8`` in an order that
-  differs from the shell's ``--series-1``..``--series-8`` in every slot but the
-  first, so the same data drew series 2 green here and orange there. Worse, its
-  order fails ``scripts/validate_palette.py`` (adjacent ΔE 12.9 light / 7.8
-  dark, both under the 15 floor) while the shell's passes. Re-pointing the
-  variables adopts the validated order without touching the mirror.
+The primitives theme off ``prefers-color-scheme`` alone, while BrainHub's theme
+is an explicit ``[data-theme]`` attribute the reader sets — so toggling the page
+to dark left every report chart a white block on a dark page. The CSS below
+re-homes the SVG's variables onto the shell's brand tokens, which fixes that and
+also lets a brand pack recolour these charts, something they were structurally
+denied while their palette was baked in.
 """
 from __future__ import annotations
 
-from ...vendor import report_chart as rc
+from .. import chart_primitives as rc
 from ..registry import RenderPart, RenderRequest, register
 from . import _chart_base
 
@@ -85,7 +78,7 @@ def _rows_from_spec(kind: str, spec: dict) -> tuple[list[str], list[list[str]]]:
 
 
 def _theme_css() -> str:
-    """CSS that re-homes the vendored SVG's variables onto BrainHub's theme.
+    """CSS that re-homes the SVG's variables onto BrainHub's theme.
 
     The chrome variables point at the SHELL's brand tokens rather than the
     vendored hexes. That fixes two things at once: the chart now follows an
@@ -94,15 +87,15 @@ def _theme_css() -> str:
     token layer and the one benefit report charts were structurally denied.
 
     ``rc``'s own constants stay as the fallback inside ``var(…, fallback)``, so
-    a page that somehow lacks the shell CSS still renders in the vendored
+    a page that somehow lacks the shell CSS still renders in the module's own
     colours instead of unstyled.
 
-    Specificity note: the vendored rule is ``svg.viz`` (0,1,1). A selector must
+    Specificity note: the SVG's own rule is ``svg.viz`` (0,1,1). A selector must
     beat that, and ``.brainhub-report-chart svg.viz`` only ties it — the SVG's
     own inline ``<style>`` comes later in document order and would win. Leading
     with ``:root`` raises it to (0,2,1).
     """
-    # vendored variable -> shell token carrying the same meaning.
+    # primitive variable -> shell token carrying the same meaning.
     mapped = {
         "surface": "--surface",
         "plane": "--bg",
@@ -122,8 +115,9 @@ def _theme_css() -> str:
         for name, token in mapped.items()
     )
     chrome = ";".join(f"--{name}:var(--bh-chart-{name})" for name in mapped)
-    # Series slots adopt the shell's validated order. The shell defines
-    # --series-N per theme, so this needs no light/dark branch either.
+    # Series slots now agree with the shell by construction (CAT_LIGHT was
+    # re-seated to match), so this only routes them through the theme layer —
+    # a brand pack that redefines --series-N reaches these charts too.
     series = ";".join(
         f"--s{i}:var(--series-{i},{rc.CAT_LIGHT[i - 1]})" for i in range(1, 9)
     )
