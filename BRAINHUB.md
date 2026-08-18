@@ -192,6 +192,33 @@ private LAN. The viewer is read-mostly, but its write endpoints have **no
 authentication** — deployment assumes every caller on the network is trusted;
 never expose the port publicly.
 
+## Shipping
+
+`scripts/make_dist.sh` builds `dist/brainhub-<version>.tar.gz`, reading the
+version from `mcp_package/pyproject.toml`. `dist/` is a build output — it is
+not in version control, and a tarball found there is whatever was last built,
+not a release artifact.
+
+The script refuses to produce a tarball that fails any of five gates. They
+exist because the first two caught real leaks:
+
+1. No `.git` — commit messages name internal projects.
+2. No aworkr logo lockups; a neutral BrainHub mark ships instead.
+3. No fleet-only hook installer.
+4. Upstream identity appears in `LICENSE` and nowhere else.
+5. No customer names anywhere in the tree.
+
+Deliberately excluded, and not to be "restored": `.git`, `.venv`,
+`wire-artifact-intercept.py` (fleet-only), `aworkr-logo-*.svg` (our brand, not
+the customer's), and `tests/test_brand_assets.py` (it compares against an
+internal SSoT that a customer machine does not have, so it can only fail
+there).
+
+What the recipient gets is a tree plus `install.sh`. Everything else in the
+tarball — `README.md`, `BRAINHUB.md`, `BRAINHUB-SCHEMA.md`, `LICENSE`,
+`skills/46m-bh-*` — is documentation they already hold, which is why there is
+no separate handoff document to keep in sync.
+
 ## Compatibility boundary
 
 ### Engine module

@@ -7,3 +7,8 @@ build/
 .pytest_cache/
 .mypy_cache/
 .release/
+
+# Build output: scripts/make_dist.sh writes here. A tarball in the tree is
+# whatever was last built, not a release — and the one that was committed
+# described version 1.6.0 while the tree shipped 2.0.0.
+dist/

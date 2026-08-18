@@ -290,5 +290,5 @@ Default: `~/.brainhub/wiki/`. Override with `--wiki /path/to/wiki`.
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.12+ (provisioned by `install.sh` through uv)
 - A BrainHub wiki (scaffolded by `install.sh`)

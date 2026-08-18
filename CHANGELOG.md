@@ -243,8 +243,9 @@ invisible in the markup and obvious on screen.
   fails when any of them falls behind, with per-kind exemptions that are
   themselves checked for staleness.
 - **`.github/workflows/ci.yml`** — the suite previously ran only when somebody
-  remembered. Matrix over Python 3.10 and 3.12; every gate runs even after an
-  earlier one fails; installs `./mcp_package` and nothing else.
+  remembered. Matrix over Python 3.10 and 3.12 (later 3.12 and 3.13, once
+  `install.sh` began provisioning the interpreter); every gate runs even after
+  an earlier one fails; installs `./mcp_package` and nothing else.
 - Tests for what already existed but was never enforced: the version string
   across five files, the series palette against `validate_palette.py` in both
   modes, and the accessible-name contract for chart SVGs.
@@ -307,14 +308,6 @@ invisible in the markup and obvious on screen.
   ids and `aria-labelledby`, replacing a bare `aria-label` and no description
   at all. Bare `id="title"`/`id="desc"` are refused by test: two charts on one
   page would make the second announce the first one's name.
-
-### Known gaps
-
-- `vendor/report_chart.py`'s `<svg>` puts `<style>` before `<title>`, gives
-  title/desc no ids, and has no `aria-labelledby` — so its `<desc>` is widely
-  not announced. The fix belongs upstream (`lab/catalog`): the file is a
-  byte-frozen mirror guarded by `tests/test_brand_assets.py`, and patching it
-  here is precisely the silent drift that guard exists to catch.
 
 ## 2.0.0
 

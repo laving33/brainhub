@@ -246,14 +246,16 @@ python3 scripts/loadtest_http_viewer.py --users 30
 ## Maintainer notes
 
 ```bash
-python3 -m unittest discover -s tests    # the suite (pytest works too)
-python3 scripts/check_docs_sync.py       # docs still describe the real registry
-python3 scripts/verify_artifact.py FILE  # a built artifact is self-contained
-python3 scripts/check_runtime_duplication.py
+# Run these with the interpreter install.sh created, not a bare python3:
+#   PY=~/.local/share/brainhub/venv/bin/python
+$PY -m unittest discover -s tests     # the suite (pytest works too)
+$PY scripts/check_docs_sync.py        # docs still describe the real registry
+$PY scripts/verify_artifact.py FILE   # a built artifact is self-contained
+$PY scripts/check_runtime_duplication.py
 ```
 
 CI (`.github/workflows/ci.yml`) runs the first, second and fourth of those on
-Python 3.10 and 3.12, and every gate runs even after an earlier one fails, so
+Python 3.12 and 3.13, and every gate runs even after an earlier one fails, so
 one push reports every problem rather than one per round trip. 3.12 is what
 `install.sh` provisions; 3.13 is there to see a break coming.
 

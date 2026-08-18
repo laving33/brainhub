@@ -135,9 +135,9 @@ Each is the renderer's registered `example`, so this table cannot drift from
 what the code accepts. `donut` is the one that bites: its `values` are shares,
 and passing raw counts silently labels a slice "300%".
 
-Report charts (`kpi`…`gauge`) cycle their colours after 8 series, so two series
-read as the same category. Cap them at 8, or use `bar-chart`/`line-chart`,
-which fold the 9th onto a neutral grey.
+Every renderer folds the 9th series onto a neutral grey rather than reusing
+the 1st series' colour — a repeated hue would read as "same category". Eight
+distinguishable hues is the honest limit; past it, split the chart.
 
 `mermaid` covers 22 offline-verified diagram types (flowchart, sequence,
 class, state, gantt, pie, ER, journey, quadrant, timeline, mindmap, gitGraph,

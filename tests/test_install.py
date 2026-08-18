@@ -133,6 +133,24 @@ class DependencyHonestyTests(unittest.TestCase):
                 for claim in ("standard library alone", "stdlib only", "zero dependencies"):
                     self.assertNotIn(claim, text)
 
+    def test_build_output_is_not_in_version_control(self):
+        # dist/ held a 1.6.0 tarball and a handoff document describing it while
+        # the tree shipped 2.0.0 — including "zero third-party dependencies,
+        # verified end to end on a bare python3", which was false. A build
+        # output committed alongside the source goes stale silently.
+        tracked = subprocess.run(
+            ["git", "ls-files", "dist/"], cwd=ROOT,
+            capture_output=True, text=True, timeout=60,
+        )
+        self.assertEqual(tracked.stdout.strip(), "", "dist/ is a build output")
+
+    def test_docs_use_the_current_skill_names(self):
+        # They were renamed to the 46m- prefix in 2.0.0; a doc naming the old
+        # ones sends a reader to directories that no longer exist.
+        for doc in ("README.md", "BRAINHUB.md"):
+            with self.subTest(doc=doc):
+                self.assertNotIn("skills/brainhub-", (ROOT / doc).read_text(encoding="utf-8"))
+
     def test_markdown_stack_is_a_declared_dependency(self):
         pyproject = (ROOT / "mcp_package" / "pyproject.toml").read_text(encoding="utf-8")
         self.assertIn("markdown-it-py", pyproject)
