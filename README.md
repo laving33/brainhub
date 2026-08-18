@@ -81,14 +81,27 @@ Engine verbs beyond the core set (`health`, `doctor --fix`, `validate`,
 ## Artifacts (charts, diagrams, interactive HTML, PDF)
 
 13 renderers: 9 report-chart kinds (`kpi`, `line`, `bar`, `stacked-bar`,
-`heatmap`, `scatter`, `funnel`, `donut`, `gauge`), `mermaid`, the legacy
-`line-chart` / `bar-chart`, and `interactive-html`. The `mermaid` renderer
-covers 22 diagram types verified to render fully offline under the artifact
-CSP: flowchart, sequence, class, state, gantt, pie, ER, user journey,
-quadrant, timeline, mindmap, gitGraph, xychart, sankey, kanban, packet,
-block, radar, treemap, C4 context, architecture (built-in icons), and venn.
-For a swimlane use `flowchart` with `subgraph` lanes; for an org chart use
-`flowchart TD`; for a layer stack use `block-beta`.
+`heatmap`, `scatter`, `funnel`, `donut`, `gauge`), plus `line-chart`,
+`bar-chart`, `mermaid` and `interactive-html`.
+
+`line-chart` and `bar-chart` are not older versions of `line` and `bar` — the
+names suggest they are, and the capability is what differs. `line` spaces its x
+axis evenly by category; `line-chart` scales x numerically, so it can plot
+irregular intervals. `bar` is one ranked measure in a single hue; `bar-chart`
+is several series per category. Picking `line` for irregular x values silently
+evenly-spaces them.
+
+Each renderer registers an `example` spec, which is where its field names are
+documented — they are not consistent between kinds. The table in
+`skills/46m-bh-runtime/SKILL.md` lists them all, and `check_docs_sync.py` keeps
+it honest. `--title` names both the document and the chart drawn inside it.
+
+The `mermaid` renderer covers 22 diagram types verified to render fully offline
+under the artifact CSP: flowchart, sequence, class, state, gantt, pie, ER, user
+journey, quadrant, timeline, mindmap, gitGraph, xychart, sankey, kanban,
+packet, block, radar, treemap, C4 context, architecture (built-in icons), and
+venn. For a swimlane use `flowchart` with `subgraph` lanes; for an org chart
+use `flowchart TD`; for a layer stack use `block-beta`.
 
 ```bash
 # Render a spec into ONE self-contained HTML file — zero external requests,

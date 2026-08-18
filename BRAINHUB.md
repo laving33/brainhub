@@ -132,27 +132,49 @@ Each step names the gate that fails if you skip it, so none of this depends on
 remembering:
 
 1. Drop one module into `mcp_package/brainhub_core/render/renderers/`, calling
-   `@renderer("my-kind", output_kind=..., input_spec=..., description=...)`.
-   Discovery is automatic — no edit to the registry, the CLI, or the MCP server.
-2. Add a minimal valid spec to `tests/test_brand_pack_core.py` and
-   `tests/test_verify_artifact.py`. *Both files fail on any registered kind they
-   have no spec for*, so a new renderer cannot enter uncovered.
-3. Name the kind in `README.md`, `mcp_package/README.md`,
-   `skills/46m-bh-runtime/SKILL.md`, and the `bh_build` docstring — or declare
-   the omission with a reason in `scripts/check_docs_sync.py`'s
-   `RENDERER_OMISSIONS`. *`scripts/check_docs_sync.py` fails otherwise*, and it
-   also fails on an exemption for a kind that no longer exists.
-4. If the renderer emits an `<svg>`, give it `role="img"`, a `<title>` as the
-   first child, a non-empty `<desc>`, and `aria-labelledby` naming both — with
-   ids prefixed by the renderer, never bare `title`/`desc`. *`tests/
-   test_render_a11y_contract.py` fails otherwise.*
-5. If it emits script, it must be a generated constant, never assembled from
-   caller data, and it must not use an `onclick=` attribute. *`scripts/
-   verify_artifact.py` fails on the attribute, and the artifact's own hashed
-   CSP refuses any script the build did not produce.*
+   `@renderer("my-kind", output_kind=…, input_spec=…, description=…, example=…,
+   self_titled=…)`. Discovery is automatic — no edit to the registry, the CLI,
+   or the MCP server.
+2. `example` is a minimal spec that renders, and it is the kind's spec
+   documentation: field names differ per kind and exist nowhere else. Tests
+   render it instead of restating fixtures, so a new renderer cannot enter
+   uncovered. *`scripts/check_docs_sync.py` fails when a kind registers none.*
+3. `self_titled` says whether the output draws its own visible title. Get it
+   wrong and the artifact shows the title twice, or — the way this shipped for a
+   long time — shows neither while the browser tab shows the real one.
+   Renderers that self-title must resolve `request.title` **ahead of**
+   `spec["title"]`, or a caller's `--title` is silently discarded.
+4. Name the kind in `README.md`, `mcp_package/README.md`,
+   `skills/46m-bh-runtime/SKILL.md`, and the `bh_build` docstring, and add its
+   spec to the skill's field table — or declare the omission with a reason in
+   `scripts/check_docs_sync.py`'s `RENDERER_OMISSIONS`. *That script fails
+   otherwise*, on a missing mention, a missing spec field, and on an exemption
+   for a kind that no longer exists.
+5. Drawing an `<svg>`? Use `_chart_base.svg_open()` rather than assembling one:
+   it applies the accessible-name contract (`role="img"`, `<title>` FIRST,
+   non-empty `<desc>`, `aria-labelledby` naming both) and takes a per-chart id
+   prefix from `_chart_base.id_prefix(base, spec)` — a module-level constant
+   separates one kind from another but not two charts of the same kind, and the
+   second then gets announced with the first one's name. Because `role="img"`
+   makes the plot's text presentational, the `<desc>` must carry the DATA, not
+   describe the shape. *`tests/test_render_a11y_contract.py` and
+   `tests/test_chart_base.py` fail otherwise.*
+6. Reuse `_chart_base` for geometry too — margins, ticks, legend, caption. Those
+   were duplicated once and drifted into different answers in every one of them.
+7. Emitting script? It must be a generated constant, never assembled from caller
+   data, and must not use an `onclick=` attribute. *`scripts/verify_artifact.py`
+   fails on the attribute, and the artifact's own hashed CSP refuses any script
+   the build did not produce.*
 
 Fix the source of truth rather than widening a gate: each of these caught a real
 defect the first time it ran.
+
+**Look at the output.** Every gate above reads markup. The defects that survived
+longest — a chart headed "Ranked" instead of the caller's title, a white chart
+on a dark page, a legend printed over its own data — were all invisible to a
+string assertion and obvious in a screenshot. Render the kind with realistic
+data (Chinese labels included, since CJK is a full em against roughly half that
+for a digit) and open it before calling the work done.
 
 ## Agent access
 

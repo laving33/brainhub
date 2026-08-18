@@ -48,6 +48,11 @@ invisible in the markup and obvious on screen.
   Includes `estimate_text_width`, which knows a CJK glyph is a full em: layout
   constants sized against Latin digits truncate Chinese labels at roughly a
   third of the characters, which matters for a Chinese-first product.
+- `bh_build`'s docstring now carries the spec shape for every renderer and says
+  that `title` outranks the spec's. It is the contract an agent actually reads,
+  and it previously said only "a JSON-object string describing what to draw" —
+  leaving the field names discoverable nowhere, for a set of names that is not
+  consistent between kinds.
 - Renderers now register an `example` spec. It is the only place the field names
   exist — they are not consistent between kinds (five names for "the category
   labels", and `series` means two incompatible shapes) and appeared in no prose.

@@ -1734,7 +1734,28 @@ def bh_build(
     ~12 edges per mermaid diagram — past that, split into an overview plus
     detail diagrams.
 
-    spec is a JSON-object string describing what to draw. static flattens
+    spec is a JSON-object string describing what to draw. Field names differ per
+    renderer — copy the shape for the one you picked rather than reasoning by
+    analogy, because `series` means two incompatible things and five different
+    keys mean "the category labels":
+      kpi              {"tiles": [{"label": "營收", "value": "1,234"}]}
+      line             {"series": [{"name": ..., "values": [1, 2]}], "x_labels": [...]}
+      line-chart       {"series": [{"name": ..., "points": [[0, 1], [1, 2]]}]}
+      bar              {"values": [3, 1], "labels": [...]}
+      bar-chart        {"categories": [...], "series": [{"name": ..., "values": [...]}]}
+      stacked-bar      {"rows": [{"label": ..., "segments": [1, 2]}], "segment_names": [...]}
+      heatmap          {"rows": [{"label": ..., "values": [1, 2]}], "col_labels": [...]}
+      scatter          {"points": [{"x": 1, "y": 2, "label": ...}]}
+      funnel           {"stages": [{"label": ..., "value": 10}]}
+      donut            {"values": [0.75, 0.25], "labels": [...]}  <- SHARES summing to 1
+      gauge            {"value": 0.42}
+      mermaid          {"diagram": "graph TD; A-->B;"}
+      interactive-html {"sections": [{"heading": ..., "body": "<p>…</p>"}]}
+    An invalid spec reports the renderer's expected fields, so a wrong guess is
+    recoverable in one retry.
+
+    title names the document AND the chart drawn inside it, and it wins over any
+    "title" in the spec — pass it here rather than in the spec. static flattens
     animation for headless PNG/PDF capture. related is a comma/newline-separated
     list of related wiki/knowledge references (recorded as provenance). The file
     is stored in the pinned workspace with a strippable provenance block; run
