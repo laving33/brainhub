@@ -114,7 +114,7 @@ example for the kind you picked rather than reasoning by analogy:
 | `line-chart` | `{"series": [{"name": "營收", "points": [[0, 1], [1, 2]]}], "x_labels": [...]}` |
 | `bar` | `{"values": [3, 1], "labels": ["台北", "台中"]}` |
 | `bar-chart` | `{"categories": ["台北", "台中"], "series": [{"name": "營收", "values": [1, 2]}]}` |
-| `stacked-bar` | `{"rows": [{"label": "第一季", "segments": [1, 2]}], "segment_names": ["新客", "回購"]}` |
+| `stacked-bar` | `{"rows": [{"label": "第一季", "segments": [0.6, 0.4]}], "segment_names": ["新客", "回購"]}` — shares, or add `"value_format": "number"` |
 | `heatmap` | `{"rows": [{"label": "第一週", "values": [1, 2]}], "col_labels": ["台北", "台中"]}` |
 | `scatter` | `{"points": [{"x": 1, "y": 2, "label": "台北"}]}` |
 | `funnel` | `{"stages": [{"label": "造訪", "value": 10}, {"label": "成交", "value": 5}]}` |

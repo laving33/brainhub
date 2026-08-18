@@ -14,7 +14,11 @@ requires-python = ">=3.10"
 # (an image produced nothing), which is what pushed authors into pasting raw
 # HTML instead. linkify-it-py backs the autolink rule.
 dependencies = [
-    "mcp>=1.0.0",
+    # 1.x and 2.x both work (server.py accepts FastMCP or its 2.0 rename,
+    # MCPServer). The upper bound is deliberate: an unbounded `mcp>=1.0.0` is
+    # what let a 2.0 install land against a 1.x-only import, so every start
+    # printed "mcp package not found" while the package was in fact installed.
+    "mcp>=1.0.0,<3",
     "markdown-it-py>=3.0",
     "mdit-py-plugins>=0.4",
     "linkify-it-py>=2.0",

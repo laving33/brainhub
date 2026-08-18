@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### Fixed
+
+- **The MCP server would not start against a current SDK.** `mcp` 2.0 renamed
+  `FastMCP` to `MCPServer` and moved it out of `mcp.server.fastmcp`, and the
+  dependency was an unbounded `mcp>=1.0.0` — so a fresh install resolved to 2.x
+  and every launch exited with "mcp package not found. Install with: pip
+  install mcp" while the package was in fact installed. Both names are now
+  accepted (the constructor, `.tool()` and `.run(transport=…)` are unchanged),
+  the bound is `>=1.0.0,<3`, and the message names the real problem.
+
+### Added — accessibility and the tool contract
+
+- **Every data chart now ships a `<details>` data table.** WCAG 1.1.1 asks a
+  complex image for an alternative that serves the equivalent purpose, and
+  W3C's own technique for a chart is a table. `role="img"` makes the plot's
+  labels presentational, so before this the numbers existed nowhere a screen
+  reader could reach — the `<desc>` was one run of speech with no way to
+  compare two values. Plain markup, no JS, and the print CSS already opens
+  every `<details>`, so it reaches the PDF too. 11 of 13 kinds; `mermaid` and
+  `interactive-html` are not data charts.
+- **`bh_build`'s `spec` is typed as an object.** It was `spec: str`, which
+  generated `{"type": "string"}` — no schema at all for the one argument whose
+  shape the model has to get right. It is now `dict | str` (the string form
+  keeps already-configured callers working), and every spec error returns the
+  renderer's registered `example`, so a wrong guess is recoverable in one retry.
+
 ### Fixed — the 13 renderers as one system
 
 Found by rendering every kind with real data and Chinese labels and *looking at
@@ -58,9 +84,11 @@ invisible in the markup and obvious on screen.
   labels", and `series` means two incompatible shapes) and appeared in no prose.
   Tests render it, `SKILL.md` quotes it in a new spec table, and
   `check_docs_sync.py` fails when a kind lacks one or the table omits a field.
-  This replaced three separate copies of the same fixtures, one of which was
-  wrong: it passed raw counts to donut's `values`, which are shares, so the
-  canonical example rendered a slice labelled "300%".
+  This replaced three separate copies of the same fixtures, two of which were
+  wrong: they passed raw counts to fields the primitive formats as a percentage,
+  so the canonical donut labelled a slice "300%" and the canonical stacked bar
+  labelled a segment "27100%". Both were found by looking at a screenshot, and
+  a test now fails on any percent-formatted example that exceeds 100%.
 
 ### Security
 

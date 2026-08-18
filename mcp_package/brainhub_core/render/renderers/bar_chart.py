@@ -236,7 +236,20 @@ def render(request: RenderRequest) -> RenderPart:
         + "</svg>"
     )
 
-    body = _chart_base.figure(svg, title or "", css_class="brainhub-bar-chart")
-    head = f"<style>{_chart_base.figure_css('brainhub-bar-chart')}</style>"
+    table = _chart_base.data_table(
+        ["類別", *[name for name, _ in series]],
+        [
+            [category, *[_fmt_num(values[i]) for _, values in series]]
+            for i, category in enumerate(categories)
+        ],
+        caption=title or "Bar chart",
+    )
+    body = _chart_base.figure(
+        svg, title or "", css_class="brainhub-bar-chart", extra=table
+    )
+    head = (
+        f"<style>{_chart_base.figure_css('brainhub-bar-chart')}"
+        f"{_chart_base.DATA_TABLE_CSS}</style>"
+    )
 
     return RenderPart(body=body, head=head, title=title or "Bar chart")

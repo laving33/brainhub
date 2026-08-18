@@ -262,18 +262,65 @@ def legend(names: list[str], colors: list[str], *, swatch: str = "square") -> li
     return parts
 
 
-def figure(svg: str, title: str, *, css_class: str) -> str:
+def figure(svg: str, title: str, *, css_class: str, extra: str = "") -> str:
     """Wrap a chart SVG in a ``<figure>`` with its caption ABOVE the plot.
 
     Above, for both kinds: a caption under one chart and over the next reads as
-    belonging to the wrong figure when two are stacked in a report.
+    belonging to the wrong figure when two are stacked in a report. ``extra``
+    goes after the plot — that is where the data table belongs.
     """
     caption = (
         f'<figcaption class="{css_class}-title">{html.escape(title)}</figcaption>'
         if title
         else ""
     )
-    return f'<figure class="{css_class}">{caption}{svg}</figure>'
+    return f'<figure class="{css_class}">{caption}{svg}{extra}</figure>'
+
+
+def data_table(headers: list[str], rows: list[list[str]], *, caption: str) -> str:
+    """A collapsible table carrying the chart's numbers.
+
+    WCAG 1.1.1 asks a complex image for a text alternative that "serves the
+    equivalent purpose", and W3C's own technique for charts is a data table.
+    A ``<desc>`` cannot do that job alone: it is announced as one run of speech
+    with no way to compare two values, and ``role="img"`` hides the plot's own
+    labels, so without this the numbers exist nowhere a screen reader can reach.
+
+    Plain markup, no JS — ``<details>`` works with the artifact's script-src, and
+    the document layer already forces every ``<details>`` open when printing, so
+    the table lands in the PDF too.
+    """
+    if not headers or not rows:
+        return ""
+    head = "".join(f'<th scope="col">{html.escape(h)}</th>' for h in headers)
+    body = "".join(
+        "<tr>"
+        + "".join(
+            f'<th scope="row">{html.escape(cell)}</th>' if i == 0
+            else f"<td>{html.escape(cell)}</td>"
+            for i, cell in enumerate(row)
+        )
+        + "</tr>"
+        for row in rows
+    )
+    return (
+        '<details class="bh-chart-data">'
+        f"<summary>檢視資料表格</summary>"
+        f"<table><caption>{html.escape(caption)}</caption>"
+        f"<thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
+        "</details>"
+    )
+
+
+DATA_TABLE_CSS = (
+    ".bh-chart-data{margin-top:10px;font-size:13px;}"
+    ".bh-chart-data summary{cursor:pointer;color:var(--muted);}"
+    ".bh-chart-data table{border-collapse:collapse;margin-top:8px;}"
+    ".bh-chart-data caption{text-align:left;color:var(--muted);padding-bottom:4px;}"
+    ".bh-chart-data th,.bh-chart-data td{border:1px solid var(--border);"
+    "padding:4px 10px;text-align:right;}"
+    ".bh-chart-data th[scope=row]{text-align:left;font-weight:500;}"
+)
 
 
 def figure_css(css_class: str) -> str:

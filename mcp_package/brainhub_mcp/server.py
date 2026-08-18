@@ -121,11 +121,23 @@ if not WIKI_DIR.exists():
     sys.exit(1)
 
 # ── Import MCP SDK ────────────────────────────────────────────────────
+# mcp 2.0 renamed FastMCP to MCPServer and moved it out of mcp.server.fastmcp.
+# The constructor, the .tool() decorator and .run(transport=...) are unchanged,
+# so both are accepted rather than pinning the SDK back to 1.x. Trying the new
+# path FIRST means a 2.x install stops paying an ImportError on every start.
 try:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer as _MCPServer
 except ImportError:
-    print("[brainhub-mcp] mcp package not found. Install with: pip install mcp", file=sys.stderr)
-    sys.exit(1)
+    try:
+        from mcp.server.fastmcp import FastMCP as _MCPServer
+    except ImportError:
+        print(
+            "[brainhub-mcp] the 'mcp' SDK is missing or exposes neither "
+            "mcp.server.mcpserver.MCPServer (2.x) nor mcp.server.fastmcp.FastMCP "
+            "(1.x). Install a supported release with: pip install 'mcp>=1,<3'",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
 def _instructions(surface: str, memory_enabled: bool = True) -> str:
     if not memory_enabled:
@@ -203,7 +215,7 @@ def _instructions(surface: str, memory_enabled: bool = True) -> str:
 
 from brainhub_core.config import memory_layer_enabled as _startup_memory_layer_enabled
 
-mcp = FastMCP(
+mcp = _MCPServer(
     "brainhub",
     instructions=_instructions(MCP_SURFACE, _startup_memory_layer_enabled(WIKI_DIR.parent)),
 )
@@ -1713,8 +1725,13 @@ def bh_link(from_handle: str, to_handle: str) -> str:
 @_slim_tool()
 @_full_tool()
 def bh_build(
+    # dict first, string second: the MCP schema is generated from this
+    # annotation, and `spec: str` advertised {"type": "string"} — so the model
+    # was handed no schema at all for the one argument whose shape it has to get
+    # right. The union keeps already-configured callers that send a JSON string
+    # working; prefer sending the object.
     renderer: str,
-    spec: str,
+    spec: dict | str,
     title: str = "",
     static: bool = False,
     related: str = "",
@@ -1743,7 +1760,7 @@ def bh_build(
       line-chart       {"series": [{"name": ..., "points": [[0, 1], [1, 2]]}]}
       bar              {"values": [3, 1], "labels": [...]}
       bar-chart        {"categories": [...], "series": [{"name": ..., "values": [...]}]}
-      stacked-bar      {"rows": [{"label": ..., "segments": [1, 2]}], "segment_names": [...]}
+      stacked-bar      {"rows": [{"label": ..., "segments": [0.6, 0.4]}], "segment_names": [...]}  <- SHARES
       heatmap          {"rows": [{"label": ..., "values": [1, 2]}], "col_labels": [...]}
       scatter          {"points": [{"x": 1, "y": 2, "label": ...}]}
       funnel           {"stages": [{"label": ..., "value": 10}]}
@@ -1773,16 +1790,30 @@ def bh_build(
             },
             ensure_ascii=False,
         )
+    # The renderer's registered example is the only statement of its field names
+    # anywhere; returning it turns a wrong guess into a one-retry fix instead of
+    # a caller reading Python signatures it cannot see.
+    example = _core_render.registry.get(clean_renderer).example
     try:
         parsed = json.loads(spec) if isinstance(spec, str) else spec
     except (TypeError, ValueError) as exc:
         return json.dumps(
-            {"tool": "bh_build", "ok": False, "error": f"spec must be a JSON object: {exc}"},
+            {
+                "tool": "bh_build",
+                "ok": False,
+                "error": f"spec must be a JSON object: {exc}",
+                "example": example,
+            },
             ensure_ascii=False,
         )
     if not isinstance(parsed, dict):
         return json.dumps(
-            {"tool": "bh_build", "ok": False, "error": "spec must be a JSON object"},
+            {
+                "tool": "bh_build",
+                "ok": False,
+                "error": "spec must be a JSON object",
+                "example": example,
+            },
             ensure_ascii=False,
         )
     try:
@@ -1798,7 +1829,10 @@ def bh_build(
             name=None,  # filename derived from the title slug -> no caller-controlled path
         )
     except ValueError as exc:  # includes render.RendererError (bad renderer/spec)
-        return json.dumps({"tool": "bh_build", "ok": False, "error": str(exc)}, ensure_ascii=False)
+        return json.dumps(
+            {"tool": "bh_build", "ok": False, "error": str(exc), "example": example},
+            ensure_ascii=False,
+        )
     info.pop("path", None)  # do not leak the absolute server path; keep stored_path
     info["tool"] = "bh_build"
     info["ok"] = True

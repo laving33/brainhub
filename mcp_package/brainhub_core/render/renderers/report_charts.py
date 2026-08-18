@@ -30,6 +30,58 @@ from __future__ import annotations
 
 from ...vendor import report_chart as rc
 from ..registry import RenderPart, RenderRequest, register
+from . import _chart_base
+
+
+def _rows_from_spec(kind: str, spec: dict) -> tuple[list[str], list[list[str]]]:
+    """Pull (headers, rows) out of a spec so the chart's numbers can be tabled.
+
+    Each kind stores its data under different keys, so this is a per-kind read
+    rather than something generic — the same reason the spec shapes are
+    documented per kind rather than described once.
+    """
+    def txt(value: object) -> str:
+        return _chart_base.fmt_num(value) if isinstance(value, (int, float)) else str(value)
+
+    if kind == "kpi":
+        tiles = spec.get("tiles") or []
+        return ["項目", "數值"], [[str(t.get("label", "")), txt(t.get("value", ""))] for t in tiles]
+    if kind == "line":
+        series = spec.get("series") or []
+        labels = [str(x) for x in (spec.get("x_labels") or [])]
+        headers = ["序列", *labels]
+        return headers, [
+            [str(s.get("name", "")), *[txt(v) for v in (s.get("values") or [])]]
+            for s in series
+        ]
+    if kind in ("bar", "donut"):
+        labels = [str(x) for x in (spec.get("labels") or [])]
+        values = spec.get("values") or []
+        return ["項目", "數值"], [[a, txt(b)] for a, b in zip(labels, values)]
+    if kind == "stacked-bar":
+        names = [str(x) for x in (spec.get("segment_names") or [])]
+        return ["列", *names], [
+            [str(r.get("label", "")), *[txt(v) for v in (r.get("segments") or [])]]
+            for r in (spec.get("rows") or [])
+        ]
+    if kind == "heatmap":
+        cols = [str(x) for x in (spec.get("col_labels") or [])]
+        return ["列", *cols], [
+            [str(r.get("label", "")), *[txt(v) for v in (r.get("values") or [])]]
+            for r in (spec.get("rows") or [])
+        ]
+    if kind == "scatter":
+        points = spec.get("points") or []
+        return ["標籤", "x", "y"], [
+            [str(p.get("label", "")), txt(p.get("x", "")), txt(p.get("y", ""))] for p in points
+        ]
+    if kind == "funnel":
+        stages = spec.get("stages") or []
+        return ["階段", "數值"], [[str(s.get("label", "")), txt(s.get("value", ""))] for s in stages]
+    if kind == "gauge":
+        maximum = spec.get("maximum", 1)
+        return ["項目", "數值"], [["值", txt(spec.get("value", ""))], ["上限", txt(maximum)]]
+    return [], []
 
 
 def _theme_css() -> str:
@@ -60,15 +112,25 @@ def _theme_css() -> str:
         "grid": "--border",
         "axis": "--border",
     }
-    chrome = ";".join(
-        f"--{name}:var({token},{rc._CHROME_LIGHT[name]})" for name, token in mapped.items()
+    # Aliased on :root first. Writing `--surface: var(--surface)` directly on the
+    # SVG is a CYCLE — a custom property referring to itself on the same element
+    # is invalid at computed-value time, and the chart rendered with unresolved
+    # colours (a black plate in light mode). The alias breaks the cycle because
+    # the two names differ.
+    aliases = ";".join(
+        f"--bh-chart-{name}:var({token},{rc._CHROME_LIGHT[name]})"
+        for name, token in mapped.items()
     )
+    chrome = ";".join(f"--{name}:var(--bh-chart-{name})" for name in mapped)
     # Series slots adopt the shell's validated order. The shell defines
     # --series-N per theme, so this needs no light/dark branch either.
     series = ";".join(
         f"--s{i}:var(--series-{i},{rc.CAT_LIGHT[i - 1]})" for i in range(1, 9)
     )
-    return f":root .brainhub-report-chart svg.viz{{{chrome};{series}}}"
+    return (
+        f":root{{{aliases}}}"
+        f":root .brainhub-report-chart svg.viz{{{chrome};{series}}}"
+    )
 
 
 _HEAD = (
@@ -76,6 +138,7 @@ _HEAD = (
     ".brainhub-report-chart{margin:0;}"
     ".brainhub-report-chart svg{display:block;max-width:100%;height:auto;}"
     f"{_theme_css()}"
+    f"{_chart_base.DATA_TABLE_CSS}"
     "</style>"
 )
 
@@ -108,9 +171,11 @@ _KINDS: dict[str, tuple] = {
     ),
     "stacked-bar": (
         rc.stacked_bar,
-        "Stacked bar — part-to-whole / composition.",
+        "Stacked bar — part-to-whole / composition. `segments` are SHARES, "
+        "because value_format defaults to percent: raw counts label a segment "
+        "'27100%'. Pass value_format='number' to stack counts instead.",
         {
-            "rows": [{"label": "第一季", "segments": [1, 2]}],
+            "rows": [{"label": "第一季", "segments": [0.6, 0.4]}],
             "segment_names": ["新客", "回購"],
         },
     ),
@@ -181,7 +246,9 @@ def _make(kind: str, fn, example: dict):
                 f"invalid spec for renderer {kind!r}: {detail} "
                 f"(expected fields: {expected})"
             ) from exc
-        body = f'<figure class="brainhub-report-chart">{svg}</figure>'
+        headers, rows = _rows_from_spec(kind, spec)
+        table = _chart_base.data_table(headers, rows, caption=title or kind)
+        body = f'<figure class="brainhub-report-chart">{svg}{table}</figure>'
         return RenderPart(body=body, head=_HEAD, title=title)
 
     return render

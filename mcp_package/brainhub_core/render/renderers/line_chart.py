@@ -226,7 +226,21 @@ def render(request: RenderRequest) -> RenderPart:
     parts.append("</svg>")
     svg = "".join(parts)
 
-    body = _chart_base.figure(svg, title, css_class="brainhub-line-chart")
-    head = f"<style>{_chart_base.figure_css('brainhub-line-chart')}</style>"
+    table = _chart_base.data_table(
+        ["序列", "x", "y"],
+        [
+            [name or f"Series {i + 1}", _fmt(x), _fmt(y)]
+            for i, (name, points) in enumerate(norm_series)
+            for x, y in points
+        ],
+        caption=title,
+    )
+    body = _chart_base.figure(
+        svg, title, css_class="brainhub-line-chart", extra=table
+    )
+    head = (
+        f"<style>{_chart_base.figure_css('brainhub-line-chart')}"
+        f"{_chart_base.DATA_TABLE_CSS}</style>"
+    )
 
     return RenderPart(body=body, head=head, title=title)

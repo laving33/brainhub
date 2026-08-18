@@ -4,6 +4,7 @@ heatmap/scatter/funnel/donut/gauge).
 Before this file existed they were exercised only indirectly through the brand
 pack suite; this is the direct render contract per kind.
 """
+import re
 import unittest
 
 from mcp_package.brainhub_core import render
@@ -61,6 +62,30 @@ class ReportChartKindsTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     render.build_document(kind, {"no_such_key": 1}, title="T")
 
+
+
+class ExampleSpecsRenderSensiblyTests(unittest.TestCase):
+    """The examples ARE the spec documentation, so a wrong one teaches a wrong shape.
+
+    Two shipped examples passed raw counts to a field the primitive formats as a
+    percentage, so the canonical donut labelled a slice "300%" and the canonical
+    stacked bar labelled a segment "27100%". Nothing caught it: the markup was
+    valid, the render succeeded, and only looking at the picture showed it.
+    """
+
+    PERCENT_FORMATTED = ("donut", "stacked-bar", "gauge")
+
+    def test_percent_examples_do_not_produce_absurd_labels(self):
+        for kind in self.PERCENT_FORMATTED:
+            with self.subTest(kind=kind):
+                doc = render.build_document(kind, spec_for(kind), title="標題").html
+                body = doc.split("<main", 1)[1]
+                for pct in re.findall(r">(\d+(?:\.\d+)?)%<", body):
+                    self.assertLessEqual(
+                        float(pct), 100.0,
+                        f"{kind} example renders {pct}% — the field takes a share, "
+                        "not a raw count",
+                    )
 
 if __name__ == "__main__":
     unittest.main()
