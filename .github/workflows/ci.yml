@@ -1,10 +1,9 @@
 name: CI
 
-# The engine, CLI and viewer are standard-library-only; `brainhub-mcp` is not
-# (markdown-it-py, mdit-py-plugins, linkify-it-py, mcp, fonttools/brotli), and
-# parts of the suite import them. So this installs the package and nothing
-# else — no test runner, no linter, no requirements file. A step that needs a
-# dependency beyond `./mcp_package` is the signal one crept in.
+# Every entry point imports the Markdown stack, so `./mcp_package` is what the
+# suite needs — and all of it. No test runner, no linter, no requirements file.
+# A step that needs a dependency beyond `./mcp_package` is the signal one
+# crept in.
 on:
   push:
     branches: [main]

@@ -5,8 +5,10 @@ Wiki + durable agent memory + rich artifacts (charts, mermaid, interactive HTML,
 PDF export) — all plain files on your own machine, every step auditable, zero
 external services.
 
-- **Zero dependencies.** The engine, CLI, and web viewer run on Python 3.10+
-  standard library alone. No database server, no vector store, no cloud.
+- **No services to run.** No database server, no vector store, no cloud, no
+  build toolchain. `./install.sh` creates one virtualenv and that is the whole
+  installation; the Python dependencies are a Markdown stack and the font
+  subsetter, pinned in `mcp_package/pyproject.toml`.
 - **Chinese output is correct on the recipient's machine, not just yours.** A
   Noto Sans CJK TC subset ships in the package — Big5 plus 99.8% of CJK Ext-A —
   and is embedded into every document that contains CJK, subset to the characters
@@ -25,27 +27,35 @@ external services.
 
 ## Requirements
 
-- Python 3.10+ (standard library only)
+- Python 3.10+. `./install.sh` provisions its own 3.12 when [uv][uv] is
+  available, so the distro's Python stops deciding this; without uv it uses
+  `python3` and refuses anything older than 3.10 with a message rather than an
+  ImportError.
 - Optional: Chrome/Chromium for server-side PDF export — found on PATH
   automatically; override with `BRAINHUB_CHROME_PDF` (see White-label &
   configuration)
-- Optional: `pip install ./mcp_package` for the stdio MCP server. It pulls
-  `mcp`, the Markdown stack, and `fonttools`/`brotli` — the last two subset the
-  shipped CJK face per document, and are hard dependencies rather than an extra
-  because "Chinese PDFs whose text layer cannot be searched" is not a degraded
-  mode anyone should be able to install into by omission.
+- The Python dependencies are declared in `mcp_package/pyproject.toml` and
+  installed by `install.sh`: `mcp` for the stdio server, the Markdown stack
+  (every entry point imports it), and `fonttools`/`brotli`. The last two subset
+  the shipped CJK face per document, and are hard dependencies rather than an
+  extra because "Chinese PDFs whose text layer cannot be searched" is not a
+  degraded mode anyone should be able to install into by omission.
+
+[uv]: https://docs.astral.sh/uv/
 
 ## Install
 
 ```bash
 tar xzf brainhub-<version>.tar.gz
 cd brainhub
-
-# Optional short alias (recommended — docs use `bh` throughout):
-install -d ~/.local/bin
-printf '#!/bin/bash\nexec python3 %s/brainhub.py "$@"\n' "$PWD" > ~/.local/bin/bh
-chmod +x ~/.local/bin/bh
+./install.sh          # creates the environment and the `bh` command
 ```
+
+With [uv][uv] present, `install.sh` provisions its own Python 3.12, so what the
+distribution happens to ship stops mattering — Ubuntu 22.04's 3.10 and 24.04's
+3.12 behave identically. Without uv it uses the system `python3` and requires
+3.10 or newer. `--system-python` forces the second path, `--venv` and
+`--bin-dir` relocate what it writes.
 
 ## Quickstart
 
@@ -64,7 +74,7 @@ bh search "deploy" ~/team-brain
 bh link deploy-runbook other-page ~/team-brain
 
 # 5. Serve the read-mostly web viewer (LAN deployment is the intended model)
-python3 serve.py --host 127.0.0.1 --port 3000 --root ~/team-brain
+bh serve ~/team-brain --port 3000
 ```
 
 Every verb also accepts the workspace via the `BRAINHUB_HOME` environment
@@ -76,7 +86,15 @@ bh publish t --body b` works).
 Engine verbs beyond the core set (`health`, `doctor --fix`, `validate`,
 `query`, `backup`, `ingest-status`, …) are forwarded automatically:
 `bh health ~/team-brain` just works. `bh --help` lists the core verbs;
-`python3 brainhub_engine.py` shows the full engine verb list.
+for the full engine verb list, run `brainhub_engine.py` with the interpreter
+`install.sh` created:
+
+```bash
+~/.local/share/brainhub/venv/bin/python brainhub_engine.py
+```
+
+The scripts run on that interpreter, not on a bare `python3` — every entry
+point imports the Markdown stack.
 
 ## Artifacts (charts, diagrams, interactive HTML, PDF)
 
@@ -237,9 +255,9 @@ python3 scripts/check_runtime_duplication.py
 
 CI (`.github/workflows/ci.yml`) runs the first, second and fourth of those on
 Python 3.10 and 3.12, and every gate runs even after an earlier one fails, so
-one push reports every problem rather than one per round trip. The engine, CLI
-and viewer are standard-library-only; the suite additionally needs
-`brainhub-mcp`'s dependencies (`pip install ./mcp_package`).
+one push reports every problem rather than one per round trip. 3.10 is there
+because it is the floor `install.sh` accepts on the system-Python path, and
+nothing else exercises it — the dev environment is 3.12.
 
 Prose that restates a fact the code owns is checked, not trusted: the renderer
 list, the verified mermaid diagram list, the version string across five files,

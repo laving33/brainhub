@@ -52,6 +52,8 @@ Usage:
 """
 from __future__ import annotations
 
+import _python_check  # noqa: F401  (refuses old interpreters first)
+
 import hashlib
 import json
 import os

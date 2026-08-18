@@ -2,6 +2,8 @@
 """BrainHub runtime-node knowledge workspace commands."""
 from __future__ import annotations
 
+import _python_check  # noqa: F401  (refuses old interpreters first)
+
 import argparse
 import hashlib
 import json

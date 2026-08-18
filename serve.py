@@ -2,6 +2,8 @@
 """BrainHub — local wiki viewer. python serve.py → http://127.0.0.1:3000"""
 from __future__ import annotations
 
+import _python_check  # noqa: F401  (refuses old interpreters first)
+
 import errno
 import html
 import http.server

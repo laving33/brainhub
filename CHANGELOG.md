@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### Added — `install.sh`
+
+- **The installer provisions its own Python.** With uv present it installs and
+  pins 3.12, so what the distribution ships stops deciding which syntax this
+  codebase may use — Ubuntu 22.04's 3.10 and 24.04's 3.12 now behave the same.
+  Without uv it uses the system `python3` and refuses anything below 3.10 with
+  a sentence naming the problem and the fix.
+- `_python_check.py` runs before any other import in all three entry points and
+  is written in 3.7-compatible syntax on purpose: a guard that only parses on
+  the versions it exists to reject never executes. Previously a `datetime.UTC`
+  import at the top of `brainhub.py` meant that on stock Ubuntu 22.04 every
+  command — `bh --help` included — died with an ImportError naming a stdlib
+  module, which reads as a broken install rather than a version floor.
+
+### Fixed
+
+- **"Zero dependencies. The engine, CLI, and web viewer run on Python 3.10+
+  standard library alone" was not true**, and had not been for a long time.
+  All three entry points import markdown-it-py through
+  `brainhub_core.markdown`; none of them starts on a bare interpreter. Nothing
+  caught it because every developer, every test run and every CI job happened
+  inside an environment that already had the package. The installer's habit of
+  executing an entry point on a clean interpreter is what surfaced it. The
+  README now states what is actually required, and a test fails on the claim
+  returning.
+
 ### Fixed
 
 - **The MCP server would not start against a current SDK.** `mcp` 2.0 renamed
