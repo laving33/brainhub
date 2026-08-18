@@ -27,6 +27,35 @@
   shape the model has to get right. It is now `dict | str` (the string form
   keeps already-configured callers working), and every spec error returns the
   renderer's registered `example`, so a wrong guess is recoverable in one retry.
+  The union sits on the PROPERTY, not at the schema root: a root-level
+  combinator is the one shape MCP clients refuse or flatten, and a flattened
+  schema stops enforcing `required`.
+- **Per-renderer spec shapes moved onto the `spec` argument.** With them inline
+  in the docstring, `bh_build`'s description reached 2,848 bytes against a
+  2,048-byte client cap — it was shipping truncated, losing its own tail. The
+  help text is generated from the registered examples, so it cannot drift.
+- `serverInfo.version` was the empty string; it now reports `BRAINHUB_VERSION`,
+  so a client log can say which build it was talking to.
+- `tests/test_mcp_client_compat.py` drives a real stdio session and checks these
+  against the tool definitions a client actually receives: the description cap,
+  no root-level combinator, an object form for `spec`, every renderer named in
+  the spec help, and the reported version.
+
+### Compatibility notes
+
+- Verified against the MCP specification revision **2026-07-28** (the protocol
+  is now stewarded by the Agentic AI Foundation under the Linux Foundation,
+  donated by Anthropic in December 2025) and Claude Code's documented client
+  limits.
+- The installed SDK advertises `2026-07-28` as its latest, but the high-level
+  server still answers the `initialize` handshake and negotiates `2025-11-25`.
+  The 2026-07-28 revision is a stateless redesign — it removes the handshake,
+  requires a `server/discover` RPC, and adds `resultType`/`ttlMs`/`cacheScope`
+  to results. Our server implements none of that yet; it is the SDK's
+  high-level surface that decides, and clients probe for the older era. Worth
+  revisiting when the SDK's stateless path is available.
+- stdio remains a supported, recommended transport. HTTP+SSE is deprecated in
+  favour of Streamable HTTP; we do not use either.
 
 ### Fixed — the 13 renderers as one system
 

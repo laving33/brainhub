@@ -121,6 +121,13 @@ if not WIKI_DIR.exists():
     sys.exit(1)
 
 # ── Import MCP SDK ────────────────────────────────────────────────────
+# Annotated + Field is how a PARAMETER carries its own description into the
+# generated JSON Schema. It matters for size: Claude Code truncates a tool
+# description at 2 KB, so per-argument documentation belongs on the argument.
+from typing import Annotated  # noqa: E402  (SDK import order is deliberate)
+
+from pydantic import Field  # noqa: E402
+
 # mcp 2.0 renamed FastMCP to MCPServer and moved it out of mcp.server.fastmcp.
 # The constructor, the .tool() decorator and .run(transport=...) are unchanged,
 # so both are accepted rather than pinning the SDK back to 1.x. Trying the new
@@ -217,6 +224,10 @@ from brainhub_core.config import memory_layer_enabled as _startup_memory_layer_e
 
 mcp = _MCPServer(
     "brainhub",
+    # Reported as serverInfo.version in the handshake. It defaulted to "", so
+    # every client logged an unversioned server and no bug report could say
+    # which build it came from.
+    version=BRAINHUB_VERSION,
     instructions=_instructions(MCP_SURFACE, _startup_memory_layer_enabled(WIKI_DIR.parent)),
 )
 
@@ -1722,16 +1733,47 @@ def bh_link(from_handle: str, to_handle: str) -> str:
     return json.dumps(result, ensure_ascii=False, default=str)
 
 
+def _build_spec_help() -> str:
+    """Per-renderer spec shapes, generated from each renderer's own example.
+
+    Generated rather than written out so it cannot drift from what the code
+    accepts — the examples are the same objects the tests render and the error
+    path returns.
+    """
+    lines = [
+        "The spec's field names differ per renderer: `series` means two "
+        "incompatible shapes and five different keys mean 'the category "
+        "labels'. Copy the shape for the renderer you picked; do not reason by "
+        "analogy. Minimal example per renderer:",
+    ]
+    for kind in _core_render.registry.kinds():
+        example = _core_render.registry.get(kind).example
+        lines.append(f"{kind}: {json.dumps(example, ensure_ascii=False)}")
+    lines.append(
+        "donut's `values` and stacked-bar's `segments` are SHARES, not counts: "
+        "both default to percent formatting, so raw counts label a slice '300%'."
+    )
+    return "\n".join(lines)
+
+
+_BUILD_SPEC_HELP = _build_spec_help()
+
+
 @_slim_tool()
 @_full_tool()
 def bh_build(
+    renderer: str,
     # dict first, string second: the MCP schema is generated from this
     # annotation, and `spec: str` advertised {"type": "string"} — so the model
     # was handed no schema at all for the one argument whose shape it has to get
     # right. The union keeps already-configured callers that send a JSON string
-    # working; prefer sending the object.
-    renderer: str,
-    spec: dict | str,
+    # working; prefer sending the object. A property-level anyOf is fine; only a
+    # ROOT-level combinator is refused/flattened by clients.
+    #
+    # The per-renderer shapes live here rather than in the docstring because
+    # Claude Code truncates a tool description at 2 KB, and with them inline
+    # this tool's description reached 2,848 bytes — losing its own tail.
+    spec: Annotated[dict | str, Field(description=_BUILD_SPEC_HELP)],
     title: str = "",
     static: bool = False,
     related: str = "",
@@ -1751,25 +1793,9 @@ def bh_build(
     ~12 edges per mermaid diagram — past that, split into an overview plus
     detail diagrams.
 
-    spec is a JSON-object string describing what to draw. Field names differ per
-    renderer — copy the shape for the one you picked rather than reasoning by
-    analogy, because `series` means two incompatible things and five different
-    keys mean "the category labels":
-      kpi              {"tiles": [{"label": "營收", "value": "1,234"}]}
-      line             {"series": [{"name": ..., "values": [1, 2]}], "x_labels": [...]}
-      line-chart       {"series": [{"name": ..., "points": [[0, 1], [1, 2]]}]}
-      bar              {"values": [3, 1], "labels": [...]}
-      bar-chart        {"categories": [...], "series": [{"name": ..., "values": [...]}]}
-      stacked-bar      {"rows": [{"label": ..., "segments": [0.6, 0.4]}], "segment_names": [...]}  <- SHARES
-      heatmap          {"rows": [{"label": ..., "values": [1, 2]}], "col_labels": [...]}
-      scatter          {"points": [{"x": 1, "y": 2, "label": ...}]}
-      funnel           {"stages": [{"label": ..., "value": 10}]}
-      donut            {"values": [0.75, 0.25], "labels": [...]}  <- SHARES summing to 1
-      gauge            {"value": 0.42}
-      mermaid          {"diagram": "graph TD; A-->B;"}
-      interactive-html {"sections": [{"heading": ..., "body": "<p>…</p>"}]}
-    An invalid spec reports the renderer's expected fields, so a wrong guess is
-    recoverable in one retry.
+    spec describes what to draw; its field names differ per renderer and are
+    documented on the spec parameter itself. An invalid spec reports that
+    renderer's expected fields, so a wrong guess costs one retry.
 
     title names the document AND the chart drawn inside it, and it wins over any
     "title" in the spec — pass it here rather than in the spec. static flattens

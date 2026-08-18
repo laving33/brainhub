@@ -132,6 +132,19 @@ pip install ./mcp_package
 #   env:     BRAINHUB_WIKI=/home/you/team-brain/wiki
 ```
 
+For Claude Code, that is `.mcp.json` (project) or `~/.claude.json` (personal):
+
+```json
+{"mcpServers": {"46m-bh": {"type": "stdio", "command": "brainhub-mcp",
+  "args": ["--wiki", "/home/you/team-brain/wiki"]}}}
+```
+
+The server speaks stdio and negotiates protocol revision `2025-11-25`. It works
+with SDK 1.x and 2.x — `mcp` 2.0 renamed `FastMCP` to `MCPServer`, and both are
+accepted. `tests/test_mcp_client_compat.py` drives a real session and holds the
+tool definitions to the limits clients impose (2 KB descriptions, no
+root-level schema combinator).
+
 **Claude Code skills:** copy or symlink the directories under `skills/` into
 `~/.claude/skills/`. They teach agents when and how to retrieve context
 (`46m-bh-retrieve`), persist decisions (`46m-bh-memory`), ingest raw files
