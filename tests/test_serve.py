@@ -1,6 +1,8 @@
 import json
 import os
 import socketserver
+import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -326,6 +328,59 @@ class ServeTests(unittest.TestCase):
         self.assertIn("所有頁面 / concept (300)", filtered)
         self.assertIn('<a class="catalog-chip active" href="/all?limit=25&amp;type=concept"><strong>concept</strong>300</a>', filtered)
         self.assertNotIn("Link Test Wiki Index", filtered)
+
+    def test_frame_ancestors_env_reaches_the_wire(self):
+        # The policy is fixed at import (like every other BRAINHUB_* override),
+        # so the only honest way to test the wiring is a fresh interpreter.
+        probe = (
+            "import json, serve;"
+            "h = object.__new__(serve.Handler);"
+            "out = {'page': [], 'artifact': []};"
+            "h.send_header = lambda k, v: out['page'].append((k, v));"
+            "h._security_headers();"
+            "h.send_header = lambda k, v: out['artifact'].append((k, v));"
+            "h._artifact_security_headers();"
+            "print(json.dumps(out))"
+        )
+
+        def probe_with(value: str | None) -> dict[str, dict[str, str]]:
+            env = dict(os.environ)
+            env.pop("BRAINHUB_FRAME_ANCESTORS", None)
+            if value is not None:
+                env["BRAINHUB_FRAME_ANCESTORS"] = value
+            result = subprocess.run(
+                [sys.executable, "-c", probe],
+                cwd=str(Path(serve.__file__).resolve().parent),
+                env=env,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return {
+                surface: dict(headers)
+                for surface, headers in json.loads(result.stdout).items()
+            }
+
+        default = probe_with(None)
+        self.assertEqual(default["page"]["X-Frame-Options"], "DENY")
+        self.assertIn("frame-ancestors 'none'", default["page"]["Content-Security-Policy"])
+        self.assertEqual(default["artifact"]["X-Frame-Options"], "SAMEORIGIN")
+
+        allowed = probe_with("http://192.168.66.70:20777")
+        self.assertIn(
+            "frame-ancestors http://192.168.66.70:20777",
+            allowed["page"]["Content-Security-Policy"],
+        )
+        self.assertNotIn("X-Frame-Options", allowed["page"])
+        self.assertIn(
+            "frame-ancestors 'self' http://192.168.66.70:20777",
+            allowed["artifact"]["Content-Security-Policy"],
+        )
+        self.assertNotIn("X-Frame-Options", allowed["artifact"])
+
+        # An unusable value must not degrade into "anyone may frame it".
+        rejected = probe_with("192.168.66.70:20777")
+        self.assertEqual(rejected, default)
 
     def test_security_headers_include_api_version(self):
         handler = object.__new__(serve.Handler)

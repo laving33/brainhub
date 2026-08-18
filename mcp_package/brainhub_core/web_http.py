@@ -68,6 +68,10 @@ ARTIFACT_CONTENT_SECURITY_POLICY = (
     "frame-ancestors 'self'; "
     "sandbox allow-scripts"
 )
+# Operator opt-in: origins allowed to frame this viewer, e.g. an internal portal
+# that shows a BrainHub page beside a conversation. Empty (the default) keeps
+# `frame-ancestors 'none'` — nobody may frame the viewer.
+FRAME_ANCESTORS_ENV = "BRAINHUB_FRAME_ANCESTORS"
 
 
 def parse_bounded_int(
@@ -122,26 +126,109 @@ class LocalRateLimiter:
         return True, 0
 
 
+def parse_frame_ancestors(raw: object) -> tuple[str, ...]:
+    """Parse the operator's frame-ancestor allowlist into bare origins.
+
+    Deliberately fails closed, unlike :func:`env_bounded_int`: a typo there costs
+    a default worker count, a typo here would decide who may frame the viewer. So
+    only ``scheme://host[:port]`` survives — a wildcard, a path, a bare host, or a
+    non-HTTP scheme is dropped, and a value that drops everything leaves framing
+    disabled rather than open.
+    """
+    origins: list[str] = []
+    for token in str(raw or "").replace(",", " ").split():
+        candidate = token.strip().rstrip("/")
+        if not candidate or "*" in candidate:
+            continue
+        scheme, separator, rest = candidate.partition("://")
+        if not separator or scheme.lower() not in {"http", "https"}:
+            continue
+        if not rest or "/" in rest:
+            continue
+        origin = f"{scheme.lower()}://{rest.lower()}"
+        if origin not in origins:
+            origins.append(origin)
+    return tuple(origins)
+
+
+def _with_frame_ancestors(policy: str, sources: Iterable[str]) -> str:
+    """Return ``policy`` with its frame-ancestors source list replaced."""
+    replacement = "frame-ancestors " + " ".join(sources)
+    directives = [directive.strip() for directive in policy.split(";")]
+    return "; ".join(
+        replacement if directive.lower().startswith("frame-ancestors") else directive
+        for directive in directives
+        if directive
+    )
+
+
+def viewer_content_security_policy(frame_ancestors: Iterable[str] = ()) -> str:
+    """Viewer CSP, opened to the operator's frame-ancestor allowlist if any."""
+    allowed = tuple(frame_ancestors)
+    if not allowed:
+        return CONTENT_SECURITY_POLICY
+    return _with_frame_ancestors(CONTENT_SECURITY_POLICY, allowed)
+
+
+def artifact_content_security_policy(frame_ancestors: Iterable[str] = ()) -> str:
+    """Artifact CSP; the same-origin gallery keeps framing artifacts either way."""
+    allowed = tuple(frame_ancestors)
+    if not allowed:
+        return ARTIFACT_CONTENT_SECURITY_POLICY
+    return _with_frame_ancestors(ARTIFACT_CONTENT_SECURITY_POLICY, ("'self'", *allowed))
+
+
+def frame_options_for_policy(policy: str, default: str = "DENY") -> str | None:
+    """Return the X-Frame-Options value matching ``policy``, or None to omit it.
+
+    X-Frame-Options can say "nobody" or "same origin" and nothing else — its
+    ALLOW-FROM form was removed from every browser. So once the CSP names an
+    origin, the legacy header can only contradict it: browsers that follow the
+    CSP spec ignore XFO when frame-ancestors is present, but one that does not
+    would block the very embed the operator just allowed. Omitting it leaves a
+    single authority for who may frame the page.
+    """
+    for directive in policy.split(";"):
+        name, _, sources = directive.strip().partition(" ")
+        if name.lower() != "frame-ancestors":
+            continue
+        tokens = sources.split()
+        if tokens == ["'none'"]:
+            return "DENY"
+        if tokens == ["'self'"]:
+            return "SAMEORIGIN"
+        return None
+    return default
+
+
 def local_security_headers(
     api_version: str,
     content_security_policy: str = CONTENT_SECURITY_POLICY,
 ) -> tuple[tuple[str, str], ...]:
     """Return baseline local-viewer security headers."""
-    return (
-        ("X-BrainHub-API-Version", str(api_version)),
-        ("X-Content-Type-Options", "nosniff"),
-        ("X-Frame-Options", "DENY"),
-        ("X-DNS-Prefetch-Control", "off"),
-        ("X-Permitted-Cross-Domain-Policies", "none"),
-        ("Referrer-Policy", "no-referrer"),
-        ("Cross-Origin-Resource-Policy", "same-origin"),
-        ("Cross-Origin-Opener-Policy", "same-origin"),
-        ("Permissions-Policy", PERMISSIONS_POLICY),
-        ("Content-Security-Policy", content_security_policy),
+    frame_options = frame_options_for_policy(content_security_policy, "DENY")
+    return tuple(
+        header
+        for header in (
+            ("X-BrainHub-API-Version", str(api_version)),
+            ("X-Content-Type-Options", "nosniff"),
+            ("X-Frame-Options", frame_options) if frame_options else None,
+            ("X-DNS-Prefetch-Control", "off"),
+            ("X-Permitted-Cross-Domain-Policies", "none"),
+            ("Referrer-Policy", "no-referrer"),
+            ("Cross-Origin-Resource-Policy", "same-origin"),
+            ("Cross-Origin-Opener-Policy", "same-origin"),
+            ("Permissions-Policy", PERMISSIONS_POLICY),
+            ("Content-Security-Policy", content_security_policy),
+        )
+        if header is not None
     )
 
 
-def artifact_security_headers(api_version: str) -> tuple[tuple[str, str], ...]:
+def artifact_security_headers(
+    api_version: str,
+    content_security_policy: str = ARTIFACT_CONTENT_SECURITY_POLICY,
+) -> tuple[tuple[str, str], ...]:
     """Return headers for serving a sandboxed self-contained artifact document.
 
     Differs from ``local_security_headers`` in two ways, both required so a
@@ -150,22 +237,28 @@ def artifact_security_headers(api_version: str) -> tuple[tuple[str, str], ...]:
 
     * ``X-Frame-Options: SAMEORIGIN`` (not DENY) so the same-origin gallery may
       frame it; external framing is still blocked (paired with
-      ``frame-ancestors 'self'`` in the CSP).
+      ``frame-ancestors 'self'`` in the CSP). With a frame-ancestor allowlist in
+      play the header is omitted instead — see :func:`frame_options_for_policy`.
     * ``Content-Security-Policy: ... sandbox allow-scripts`` so the artifact's
       own inline scripts run inside a unique opaque origin, unable to reach the
       viewer's cookies, storage, or credentialed same-origin APIs.
     """
-    return (
-        ("X-BrainHub-API-Version", str(api_version)),
-        ("X-Content-Type-Options", "nosniff"),
-        ("X-Frame-Options", "SAMEORIGIN"),
-        ("X-DNS-Prefetch-Control", "off"),
-        ("X-Permitted-Cross-Domain-Policies", "none"),
-        ("Referrer-Policy", "no-referrer"),
-        ("Cross-Origin-Resource-Policy", "same-origin"),
-        ("Cross-Origin-Opener-Policy", "same-origin"),
-        ("Permissions-Policy", PERMISSIONS_POLICY),
-        ("Content-Security-Policy", ARTIFACT_CONTENT_SECURITY_POLICY),
+    frame_options = frame_options_for_policy(content_security_policy, "SAMEORIGIN")
+    return tuple(
+        header
+        for header in (
+            ("X-BrainHub-API-Version", str(api_version)),
+            ("X-Content-Type-Options", "nosniff"),
+            ("X-Frame-Options", frame_options) if frame_options else None,
+            ("X-DNS-Prefetch-Control", "off"),
+            ("X-Permitted-Cross-Domain-Policies", "none"),
+            ("Referrer-Policy", "no-referrer"),
+            ("Cross-Origin-Resource-Policy", "same-origin"),
+            ("Cross-Origin-Opener-Policy", "same-origin"),
+            ("Permissions-Policy", PERMISSIONS_POLICY),
+            ("Content-Security-Policy", content_security_policy),
+        )
+        if header is not None
     )
 
 

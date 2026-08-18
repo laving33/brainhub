@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import socket
 import subprocess
 import sys
@@ -190,6 +191,46 @@ def run_smoke(work_dir: Path, python: str) -> None:
         status, _, options_payload = request_json(base_url, "/api/status", method="OPTIONS")
         require(status == 405, "OPTIONS did not return controlled 405")
         require(options_payload.get("error"), "OPTIONS response did not include JSON error")
+    finally:
+        process.terminate()
+        try:
+            process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate(timeout=5)
+
+    run_frame_ancestors_smoke(demo_target, python)
+
+
+def run_frame_ancestors_smoke(demo_target: Path, python: str) -> None:
+    """Boot the viewer with an embedding allowlist and check the real headers.
+
+    The unit suite proves the env var reaches the header tuple; this proves the
+    running server sends it, which is what an operator wiring up a portal embed
+    is actually asking about.
+    """
+    portal_origin = "http://127.0.0.1:20777"
+    port = free_port()
+    base_url = f"http://127.0.0.1:{port}"
+    env = dict(os.environ, BRAINHUB_FRAME_ANCESTORS=portal_origin)
+    process = subprocess.Popen(
+        [python, "serve.py", "--port", str(port)],
+        cwd=demo_target,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        wait_until_ready(base_url, process)
+
+        _, headers, _ = request(base_url, "/")
+        policy = headers.get("Content-Security-Policy", "")
+        require(f"frame-ancestors {portal_origin}" in policy, "allowlisted origin missing from home page CSP")
+        require("frame-ancestors 'none'" not in policy, "home page CSP still refuses every framer")
+        # X-Frame-Options cannot name an origin, so a leftover DENY would be a
+        # second, contradicting answer to "who may frame this".
+        require("X-Frame-Options" not in headers, "home page still sends the legacy frame header")
     finally:
         process.terminate()
         try:

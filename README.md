@@ -218,6 +218,26 @@ BrainHub is designed for a **trusted private LAN**. The viewer binds
 reach it. Write endpoints assume every caller on the network is trusted — do
 not expose the port to the public internet.
 
+### Showing a page inside another app
+
+By default nothing may frame the viewer (`frame-ancestors 'none'`), so a portal
+that embeds a BrainHub page in an `<iframe>` gets a blank box. Name the framing
+origins to allow it:
+
+```bash
+BRAINHUB_FRAME_ANCESTORS="http://portal.internal:20777 https://portal.example.com"
+```
+
+Origins only — `scheme://host[:port]`, space- or comma-separated. A wildcard, a
+path, or a bare host is dropped, and a value that leaves nothing usable keeps
+framing off rather than opening it up. With an allowlist set the viewer stops
+sending `X-Frame-Options`, which cannot name an origin and would otherwise
+contradict the policy.
+
+This grants **framing, not access**: the viewer has no login, so anyone who can
+reach the port can already read it. Put an authenticating proxy in front if that
+is not acceptable.
+
 ### Sizing the viewer for a team
 
 The viewer serves concurrent readers from a bounded worker pool. The defaults are

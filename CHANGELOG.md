@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Added — a portal may now frame the viewer, if you say so
+
+`BRAINHUB_FRAME_ANCESTORS` names the origins allowed to embed viewer pages and
+artifacts in an `<iframe>`. Unset — the default — nothing changes: the policy
+stays `frame-ancestors 'none'` and the headers are byte-identical to before.
+
+The reason this needed a switch rather than a relaxation: the viewer's refusal
+to be framed is correct for a tool with no login. What changed is that a
+teammate-facing portal now wants to show a BrainHub page beside a conversation,
+and "open it in a new tab" loses the context that made the link worth following.
+So the refusal stays the default and the operator names the exception.
+
+The parser fails closed, unlike the sizing knobs next to it: a typo in
+`BRAINHUB_MAX_WORKERS` costs a default worker count, a typo here would decide
+who may frame the page. Only `scheme://host[:port]` survives — a wildcard, a
+path, or a bare host is dropped, and a value that leaves nothing usable keeps
+framing off.
+
+With an allowlist set the viewer stops sending `X-Frame-Options`. That header
+can say "nobody" or "same origin" and nothing else — its ALLOW-FROM form was
+removed from every browser — so once the CSP names an origin the legacy header
+can only contradict it. Verified in a real browser rather than argued from the
+spec: an allowlisted origin renders the page, an unlisted one is still refused.
+
+This grants framing, not access. The viewer still has no authentication, so who
+can read it is still "whoever can reach the port".
+
 ### Changed — the chart primitives are ours now
 
 `vendor/report_chart.py` is now `render/chart_primitives.py`, owned outright.

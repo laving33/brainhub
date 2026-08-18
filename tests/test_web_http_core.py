@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "mcp_package"))
 
 from brainhub_core.web_http import (  # noqa: E402
     ACCEPT_BACKLOG_ENV,
+    ARTIFACT_CONTENT_SECURITY_POLICY,
     BROWSER_SOURCE_LOCAL_ONLY,
     BoundedThreadPoolTCPServer,
     CONTENT_SECURITY_POLICY,
@@ -23,15 +24,19 @@ from brainhub_core.web_http import (  # noqa: E402
     REQUEST_TIMEOUT_ENV,
     SVG_CONTENT_SECURITY_POLICY,
     ViewerTransportConfig,
+    artifact_content_security_policy,
+    artifact_security_headers,
     env_bounded_int,
     is_allowed_static_file,
     local_no_store_headers,
     local_security_headers,
     parse_bounded_int,
+    parse_frame_ancestors,
     resolve_raw_static_path,
     safe_resolve,
     validate_local_browser_source_headers,
     validate_local_host_header,
+    viewer_content_security_policy,
 )
 
 
@@ -50,6 +55,67 @@ class WebHttpCoreTests(unittest.TestCase):
         self.assertIn("frame-ancestors 'none'", CONTENT_SECURITY_POLICY)
         self.assertIn("camera=()", PERMISSIONS_POLICY)
         self.assertNotIn("fullscreen=()", PERMISSIONS_POLICY)
+
+    def test_frame_ancestor_allowlist_parses_only_bare_origins(self):
+        self.assertEqual(
+            parse_frame_ancestors("http://192.168.66.71:23046, https://Portal.Example.com/"),
+            ("http://192.168.66.71:23046", "https://portal.example.com"),
+        )
+
+        for raw in (
+            "",
+            None,
+            "*",
+            "https://*.example.com",
+            # A URL, not an origin: the path would be silently ignored by the
+            # browser, so an operator who wrote one has the wrong mental model.
+            "http://192.168.66.71:23046/page/W9RNRP",
+            "192.168.66.71:23046",
+            "ftp://example.com",
+            "'self'",
+        ):
+            self.assertEqual(parse_frame_ancestors(raw), (), f"should reject: {raw!r}")
+
+    def test_no_allowlist_leaves_both_policies_byte_identical(self):
+        # The opt-in must be invisible when unused: same string, not merely an
+        # equivalent one, so an operator diffing headers sees no change.
+        self.assertEqual(viewer_content_security_policy(), CONTENT_SECURITY_POLICY)
+        self.assertEqual(viewer_content_security_policy(()), CONTENT_SECURITY_POLICY)
+        self.assertEqual(artifact_content_security_policy(), ARTIFACT_CONTENT_SECURITY_POLICY)
+
+    def test_allowlist_opens_frame_ancestors_and_retires_x_frame_options(self):
+        origins = ("http://192.168.66.71:23046",)
+        policy = viewer_content_security_policy(origins)
+
+        self.assertIn("frame-ancestors http://192.168.66.71:23046", policy)
+        self.assertNotIn("'none'", policy.split("frame-ancestors")[1])
+        # Everything else about the viewer policy is untouched.
+        self.assertIn("default-src 'self'", policy)
+        self.assertIn("object-src 'none'", policy)
+
+        headers = dict(local_security_headers("1", policy))
+        # X-Frame-Options cannot express "this one origin" (ALLOW-FROM is gone
+        # from every browser), so leaving DENY behind would contradict the CSP.
+        self.assertNotIn("X-Frame-Options", headers)
+        self.assertEqual(headers["Content-Security-Policy"], policy)
+
+    def test_allowlist_keeps_the_artifact_gallery_working(self):
+        policy = artifact_content_security_policy(("https://portal.example.com",))
+
+        # 'self' stays first: the same-origin gallery frames artifacts today and
+        # must keep doing so after an operator opts a portal in.
+        self.assertIn("frame-ancestors 'self' https://portal.example.com", policy)
+        self.assertIn("sandbox allow-scripts", policy)
+
+        headers = dict(artifact_security_headers("1", policy))
+        self.assertNotIn("X-Frame-Options", headers)
+        self.assertEqual(headers["Content-Security-Policy"], policy)
+
+    def test_artifact_headers_keep_sameorigin_without_an_allowlist(self):
+        headers = dict(artifact_security_headers("1"))
+
+        self.assertEqual(headers["X-Frame-Options"], "SAMEORIGIN")
+        self.assertIn("frame-ancestors 'self'", headers["Content-Security-Policy"])
 
     def test_local_security_headers_can_use_strict_svg_policy(self):
         headers = dict(local_security_headers("2", SVG_CONTENT_SECURITY_POLICY))

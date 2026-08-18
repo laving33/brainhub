@@ -168,22 +168,24 @@ from brainhub_core.web_ingest import (
     render_ingest_page as _core_render_ingest_page,
 )
 from brainhub_core.web_http import (
-    ARTIFACT_CONTENT_SECURITY_POLICY as _core_artifact_content_security_policy,
+    artifact_content_security_policy as _core_artifact_content_security_policy,
     artifact_security_headers as _core_artifact_security_headers,
     BoundedThreadPoolTCPServer as _CoreBoundedThreadPoolTCPServer,
-    CONTENT_SECURITY_POLICY as _core_content_security_policy,
     env_bounded_int as _core_env_bounded_int,
+    FRAME_ANCESTORS_ENV as _CORE_FRAME_ANCESTORS_ENV,
     is_allowed_static_file as _core_is_allowed_static_file,
     is_relative_to as _core_is_relative_to,
     LocalRateLimiter as _CoreLocalRateLimiter,
     local_no_store_headers as _core_local_no_store_headers,
     local_security_headers as _core_local_security_headers,
     parse_bounded_int as _core_parse_bounded_int,
+    parse_frame_ancestors as _core_parse_frame_ancestors,
     PERMISSIONS_POLICY as _core_permissions_policy,
     resolve_raw_static_path as _core_resolve_raw_static_path,
     safe_resolve as _core_safe_resolve,
     SVG_CONTENT_SECURITY_POLICY as _core_svg_content_security_policy,
     validate_local_browser_source_headers as _core_validate_local_browser_source_headers,
+    viewer_content_security_policy as _core_viewer_content_security_policy,
     validate_local_host_header as _core_validate_local_host_header,
     ViewerTransportConfig as _CoreViewerTransportConfig,
 )
@@ -291,10 +293,14 @@ MUTATION_RATE_WINDOW_SECONDS = _core_env_bounded_int("BRAINHUB_MUTATION_RATE_WIN
 TRANSPORT = _CoreViewerTransportConfig.from_env()
 REQUEST_TIMEOUT_SECONDS = TRANSPORT.request_timeout_seconds
 KEEPALIVE_IDLE_TIMEOUT_SECONDS = TRANSPORT.keepalive_idle_timeout_seconds
-CONTENT_SECURITY_POLICY = _core_content_security_policy
+# Who may frame this viewer. Read once at import like the other BRAINHUB_*
+# overrides, so every response answers the question the same way. Unset (the
+# default) leaves the viewer unframeable by anyone.
+FRAME_ANCESTORS = _core_parse_frame_ancestors(os.environ.get(_CORE_FRAME_ANCESTORS_ENV, ""))
+CONTENT_SECURITY_POLICY = _core_viewer_content_security_policy(FRAME_ANCESTORS)
 PERMISSIONS_POLICY = _core_permissions_policy
 SVG_CONTENT_SECURITY_POLICY = _core_svg_content_security_policy
-ARTIFACT_CONTENT_SECURITY_POLICY = _core_artifact_content_security_policy
+ARTIFACT_CONTENT_SECURITY_POLICY = _core_artifact_content_security_policy(FRAME_ANCESTORS)
 # Directory names that hold servable artifacts, derived from the catalog's
 # kind→subdir map so a per-tenant root reuses the same confinement set.
 ARTIFACT_SUBDIRS = frozenset(Path(rel).name for rel in ARTIFACT_DIRECTORIES.values())
@@ -3664,7 +3670,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header(key, value)
 
     def _artifact_security_headers(self):
-        for key, value in _core_artifact_security_headers(API_VERSION):
+        for key, value in _core_artifact_security_headers(
+            API_VERSION, ARTIFACT_CONTENT_SECURITY_POLICY
+        ):
             self.send_header(key, value)
 
     def _serve_artifact(self, subpath: str):
