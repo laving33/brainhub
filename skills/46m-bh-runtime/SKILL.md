@@ -101,6 +101,39 @@ names suggest they are, and the spec shapes are what actually differ:
 Picking `line` when the x values are irregular silently evenly-spaces them,
 which misstates the data.
 
+### Spec fields per renderer
+
+The field names are NOT consistent between kinds — five different names mean
+"the category labels", and `series` means two incompatible shapes. Copy the
+example for the kind you picked rather than reasoning by analogy:
+
+| Renderer | Minimal spec |
+|---|---|
+| `kpi` | `{"tiles": [{"label": "營收", "value": "1,234"}]}` |
+| `line` | `{"series": [{"name": "營收", "values": [1, 2]}], "x_labels": ["一月", "二月"]}` |
+| `line-chart` | `{"series": [{"name": "營收", "points": [[0, 1], [1, 2]]}], "x_labels": [...]}` |
+| `bar` | `{"values": [3, 1], "labels": ["台北", "台中"]}` |
+| `bar-chart` | `{"categories": ["台北", "台中"], "series": [{"name": "營收", "values": [1, 2]}]}` |
+| `stacked-bar` | `{"rows": [{"label": "第一季", "segments": [1, 2]}], "segment_names": ["新客", "回購"]}` |
+| `heatmap` | `{"rows": [{"label": "第一週", "values": [1, 2]}], "col_labels": ["台北", "台中"]}` |
+| `scatter` | `{"points": [{"x": 1, "y": 2, "label": "台北"}]}` |
+| `funnel` | `{"stages": [{"label": "造訪", "value": 10}, {"label": "成交", "value": 5}]}` |
+| `donut` | `{"values": [0.75, 0.25], "labels": ["直客", "通路"]}` — **shares that sum to 1**, not counts |
+| `gauge` | `{"value": 0.42}` |
+| `mermaid` | `{"diagram": "graph TD; 需求-->設計;"}` |
+| `interactive-html` | `{"sections": [{"heading": "摘要", "body": "<p>內文</p>"}]}` |
+
+`title` is accepted by every kind, but prefer `--title` / `bh_build(title=…)`:
+it names the document AND the chart, and it wins over the spec's.
+
+Each is the renderer's registered `example`, so this table cannot drift from
+what the code accepts. `donut` is the one that bites: its `values` are shares,
+and passing raw counts silently labels a slice "300%".
+
+Report charts (`kpi`…`gauge`) cycle their colours after 8 series, so two series
+read as the same category. Cap them at 8, or use `bar-chart`/`line-chart`,
+which fold the 9th onto a neutral grey.
+
 `mermaid` covers 22 offline-verified diagram types (flowchart, sequence,
 class, state, gantt, pie, ER, journey, quadrant, timeline, mindmap, gitGraph,
 xychart, sankey, kanban, packet, block, radar, treemap, C4, architecture with

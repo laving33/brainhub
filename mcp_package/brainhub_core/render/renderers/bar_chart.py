@@ -29,6 +29,7 @@ import html
 import math
 
 from ..registry import RenderPart, RenderRequest, renderer
+from . import _chart_base
 from ._series_palette import series_color
 
 # Series colors come from the shared, colorblind-validated palette module
@@ -39,9 +40,9 @@ from ._series_palette import series_color
 
 _WIDTH = 800
 _HEIGHT = 480
-# Prefixed so two charts on one page cannot collide on id="title"/"desc" — the
-# second would otherwise be announced with the first one's name.
-_ID_PREFIX = "bh-bar-chart"
+# Base for the per-chart id prefix; the spec's content hash is appended per
+# render (see _chart_base.id_prefix) so two BAR charts on one page differ too.
+_ID_BASE = "bh-bar-chart"
 _MARGIN_TOP = 30
 _MARGIN_RIGHT = 30
 _MARGIN_LEFT = 60
@@ -85,43 +86,26 @@ def _validate(spec: dict) -> None:
                 )
 
 
-def _fmt_num(value: float) -> str:
-    """Render a number without a noisy trailing '.0' or float dust."""
-    rounded = round(value, 4)
-    if rounded == int(rounded):
-        return str(int(rounded))
-    text = f"{rounded:.4f}".rstrip("0").rstrip(".")
-    return text
+_fmt_num = _chart_base.fmt_num
 
 
-def _nice_ticks(y_min: float, y_max: float, count: int = _TICK_COUNT) -> list[float]:
-    """Small dependency-free 'nice numbers' tick generator (like d3.ticks)."""
-    if y_min == y_max:
-        y_min, y_max = (0.0, 1.0) if y_min == 0 else (y_min - 1, y_max + 1)
-    span = y_max - y_min
-    raw_step = span / max(count, 1)
-    magnitude = 10 ** math.floor(math.log10(raw_step)) if raw_step > 0 else 1
-    residual = raw_step / magnitude
-    if residual > 5:
-        nice = 10
-    elif residual > 2:
-        nice = 5
-    elif residual > 1:
-        nice = 2
-    else:
-        nice = 1
-    step = nice * magnitude
-    start = math.floor(y_min / step) * step
-    end = math.ceil(y_max / step) * step
-    n_steps = round((end - start) / step)
-    return [round(start + i * step, 10) for i in range(n_steps + 1)]
+_nice_ticks = _chart_base.nice_ticks
 
 
 @renderer(
     "bar-chart",
     output_kind="chart",
     input_spec=_validate,
-    description="Bar chart (pure inline SVG, no JS)",
+    description=(
+        "Grouped bar chart — several series per category, in categorical "
+        "colours. For one ranked measure in one hue use `bar`. Pure inline SVG, no JS."
+    ),
+    example={
+        "categories": ["台北", "台中"],
+        "series": [{"name": "營收", "values": [1, 2]}],
+    },
+    # Drawn as a <figcaption> above the plot.
+    self_titled=True,
 )
 def render(request: RenderRequest) -> RenderPart:
     spec = request.spec
@@ -130,7 +114,9 @@ def render(request: RenderRequest) -> RenderPart:
         (str(entry.get("name") or f"Series {i + 1}"), [float(v) for v in entry["values"]])
         for i, entry in enumerate(spec["series"])
     ]
-    title = spec.get("title")
+    # The caller's --title outranks the spec's; without it a caller-supplied
+    # title vanished entirely — this renderer drew no visible title at all.
+    title = request.title or spec.get("title")
     y_label = spec.get("y_label")
     n_categories = len(categories)
     n_series = len(series)
@@ -219,53 +205,38 @@ def render(request: RenderRequest) -> RenderPart:
         )
 
     # ---- legend (only when there is more than one series) ----------------
+    # Shared with line-chart so the two read as one system.
     if n_series > 1:
-        legend_y = _HEIGHT - _MARGIN_BOTTOM / 2
-        entry_width = plot_width / n_series
-        for j, (name, _values) in enumerate(series):
-            lx = margin_left + j * entry_width
-            color = series_color(j)
-            parts.append(
-                f'<rect x="{lx:.2f}" y="{legend_y - 9:.2f}" width="12" height="12" '
-                f'fill="{color}" rx="2" />'
+        parts.extend(
+            _chart_base.legend(
+                [name for name, _ in series],
+                [series_color(j) for j in range(n_series)],
             )
-            parts.append(
-                f'<text x="{lx + 18:.2f}" y="{legend_y:.2f}" dominant-baseline="middle" '
-                f'font-size="12" fill="var(--text)">{html.escape(name)}</text>'
-            )
+        )
 
-    # <title> first, before anything else in the <svg>: assistive tech may skip
-    # one placed later. aria-labelledby names both, because a <desc> that nothing
-    # references is widely not announced.
+    # role="img" makes the subtree presentational, so the plot's own <text> is
+    # hidden from a screen reader. The description therefore CARRIES the data:
+    # naming the series without their values leaves a non-sighted reader with
+    # nothing to act on.
     svg_title = title or "Bar chart"
-    svg_desc = (
-        f"長條圖，{n_categories} 個類別、{n_series} 個資料序列："
-        + "、".join(name for name, _ in series)
+    described = "；".join(
+        f"{name}：" + "、".join(
+            f"{cat} {_fmt_num(v)}" for cat, v in zip(categories, values)
+        )
+        for name, values in series
     )
+    svg_desc = f"長條圖，{n_categories} 個類別、{n_series} 個資料序列。{described}"
     svg = (
-        f'<svg viewBox="0 0 {_WIDTH} {_HEIGHT}" role="img" '
-        f'aria-labelledby="{_ID_PREFIX}-title {_ID_PREFIX}-desc" '
-        'style="max-width:100%;height:auto;font-family:inherit;">'
-        f'<title id="{_ID_PREFIX}-title">{html.escape(svg_title)}</title>'
-        f'<desc id="{_ID_PREFIX}-desc">{html.escape(svg_desc)}</desc>'
+        _chart_base.svg_open(
+            title=svg_title,
+            desc=svg_desc,
+            id_prefix=_chart_base.id_prefix(_ID_BASE, spec),
+        )
         + "".join(parts)
         + "</svg>"
     )
 
-    caption = (
-        f'<figcaption class="bh-bar-chart-title">{html.escape(title)}</figcaption>'
-        if title
-        else ""
-    )
-    body = f'<figure class="bh-bar-chart">{caption}{svg}</figure>'
-
-    head = (
-        "<style>"
-        ".bh-bar-chart{margin:0;padding:0;}"
-        ".bh-bar-chart-title{font-size:1rem;font-weight:600;color:var(--text);"
-        "margin-bottom:0.5rem;}"
-        ".bh-bar-chart svg text{font-family:inherit;}"
-        "</style>"
-    )
+    body = _chart_base.figure(svg, title or "", css_class="brainhub-bar-chart")
+    head = f"<style>{_chart_base.figure_css('brainhub-bar-chart')}</style>"
 
     return RenderPart(body=body, head=head, title=title or "Bar chart")

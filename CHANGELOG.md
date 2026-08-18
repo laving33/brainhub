@@ -2,6 +2,61 @@
 
 ## Unreleased
 
+### Fixed — the 13 renderers as one system
+
+Found by rendering every kind with real data and Chinese labels and *looking at
+the screenshots*, which is how several of these surfaced at all: each is
+invisible in the markup and obvious on screen.
+
+- **A caller's title was dropped by 12 of 13 kinds.** `bh build --title 季度營收`
+  produced a chart headed `Ranked`, `Trend`, `KPI`, `Gauge` or `Share` — the
+  vendored default — or, for `bar-chart` / `line-chart` / `mermaid`, no visible
+  title at all, while the browser tab showed the real one. The shell heading was
+  suppressed for everything with `output_kind == "chart"` on the assumption that
+  charts title themselves; renderers now declare `self_titled`, and every
+  renderer resolves `request.title` ahead of the spec's.
+- **Report charts ignored the theme.** Their SVG themed off
+  `prefers-color-scheme` alone, so switching the page to dark left a white block
+  on a dark page (9 of 13 kinds, plus the viewer's dashboard trend chart). Their
+  variables are now re-homed onto the shell's brand tokens, which also means a
+  brand pack finally recolours them.
+- **Two palettes disagreed on every slot but the first.** The vendored order and
+  `--series-1..8` held the same eight hues in different positions, so one
+  dataset drew series 2 green in one renderer and orange in another — and the
+  vendored order fails `validate_palette.py` (adjacent ΔE 12.9 light, 7.8 dark,
+  against a floor of 15) where the shell's passes. Report charts now point at
+  the validated order.
+- **Two charts of the same kind on one page shared their accessible-name ids.**
+  The prefix was a module constant, so it separated line from bar but not line
+  from line; a screen reader announced the second chart with the first one's
+  name. It is now a content hash, which keeps output deterministic.
+- **`<desc>` described the shape, not the data.** `role="img"` makes the plot's
+  own text presentational, so "line chart, 1 series over 3 points" was the
+  entire content a screen-reader user received. Descriptions now carry values.
+- `line-chart`'s tick generator was named `_nice_ticks` and divided the range
+  evenly, producing axis labels like 289.25. Both charts now use one d3-style
+  generator with geometric thresholds, and scale to the ticks rather than to the
+  raw data range (which had pushed the outermost label outside the plot).
+- The two charts' captions sat on opposite sides of the plot, their legends in
+  different places — the line chart's floated inside the plot area, over the
+  data — and their margins differed by a few pixels each way. All shared now.
+
+### Added
+
+- `render/renderers/_chart_base.py` — the shared geometry, formatting and markup
+  the two hand-written chart renderers had each implemented separately.
+  Includes `estimate_text_width`, which knows a CJK glyph is a full em: layout
+  constants sized against Latin digits truncate Chinese labels at roughly a
+  third of the characters, which matters for a Chinese-first product.
+- Renderers now register an `example` spec. It is the only place the field names
+  exist — they are not consistent between kinds (five names for "the category
+  labels", and `series` means two incompatible shapes) and appeared in no prose.
+  Tests render it, `SKILL.md` quotes it in a new spec table, and
+  `check_docs_sync.py` fails when a kind lacks one or the table omits a field.
+  This replaced three separate copies of the same fixtures, one of which was
+  wrong: it passed raw counts to donut's `values`, which are shares, so the
+  canonical example rendered a slice labelled "300%".
+
 ### Security
 
 - **Artifacts no longer permit arbitrary inline script.** `script-src` was

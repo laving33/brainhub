@@ -76,6 +76,22 @@ def check() -> list[str]:
     findings: list[str] = []
     kinds = sorted(render.registry.kinds())
 
+    # A kind with no example has no spec documentation anywhere: the field names
+    # are not derivable from the kind's name and appear in no prose.
+    for kind in kinds:
+        entry = render.registry.get(kind)
+        if not entry.example:
+            findings.append(f"renderer {kind!r} registers no example spec")
+            continue
+        # The example is quoted verbatim in the skill's spec table; a field the
+        # table never names is a field a caller cannot discover.
+        skill = _read(Path("skills/46m-bh-runtime/SKILL.md"))
+        for field in entry.example:
+            if not _names(skill, field):
+                findings.append(
+                    f"SKILL.md spec table omits {kind!r}'s {field!r} field"
+                )
+
     for surface, omissions in RENDERER_OMISSIONS.items():
         for kind in omissions:
             if kind not in kinds:

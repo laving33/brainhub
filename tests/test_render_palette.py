@@ -143,7 +143,7 @@ class ChartMarkColorTests(unittest.TestCase):
             ],
         }
         html = render.build_document("bar-chart", spec).html
-        m = re.search(r'<figure class="bh-bar-chart">.*?</figure>', html, re.S)
+        m = re.search(r'<figure class="brainhub-bar-chart">.*?</figure>', html, re.S)
         self.assertIsNotNone(m, "bar-chart figure not found in rendered document")
         return m.group(0)
 

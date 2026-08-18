@@ -48,7 +48,11 @@ def build_document(
         provenance=provenance,
         # Chart artifacts self-title inside the plot; suppress the shell header
         # title so it is not shown twice (browser <title> still uses doc_title).
-        header_title="" if output_kind == "chart" else None,
+        # Suppress the shell heading only when the renderer draws its own title.
+        # Keying this off output_kind == "chart" meant mermaid and the legacy
+        # bar-chart — neither of which draws a title — silently rendered with no
+        # visible title at all while the browser tab showed the real one.
+        header_title="" if renderer.self_titled else None,
     )
     return RenderResult(
         html=document,

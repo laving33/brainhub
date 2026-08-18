@@ -165,30 +165,16 @@ class EveryRendererHonoursTheBrandPackTests(unittest.TestCase):
     it, because their own deployment is the unbranded default.
     """
 
-    # Minimal valid input per registered kind, derived from the chart functions'
-    # real signatures rather than guessed, so a changed input contract fails here.
-    SPECS = {
-        "bar": {"title": "T", "values": [3, 1], "labels": ["甲", "乙"]},
-        "donut": {"title": "T", "values": [3, 1], "labels": ["甲", "乙"]},
-        "gauge": {"title": "T", "value": 0.42},
-        "heatmap": {"title": "T", "rows": [{"label": "列", "values": [1, 2]}],
-                    "col_labels": ["甲", "乙"]},
-        "kpi": {"title": "T", "tiles": [{"label": "營收", "value": "1,234"}]},
-        "line": {"title": "T", "series": [{"name": "s", "values": [1, 2]}],
-                 "x_labels": ["一", "二"]},
-        "stacked-bar": {"title": "T", "rows": [{"label": "列", "segments": [1, 2]}],
-                        "segment_names": ["甲", "乙"]},
-        "funnel": {"title": "T", "stages": [{"label": "甲", "value": 10},
-                                            {"label": "乙", "value": 5}]},
-        "scatter": {"title": "T", "points": [{"x": 1, "y": 2, "label": "點"}]},
-        "bar-chart": {"title": "T", "categories": ["甲", "乙"],
-                      "series": [{"name": "s", "values": [1, 2]}]},
-        "line-chart": {"title": "T", "x_labels": ["一", "二"],
-                       "series": [{"name": "s", "points": [[0, 1], [1, 2]]}]},
-        "mermaid": {"title": "T", "diagram": "graph TD; 甲-->乙;"},
-        "interactive-html": {"title": "T", "sections": [{"heading": "節",
-                                                         "body": "<p>中文</p>"}]},
-    }
+    # Specs come from each renderer's registered ``example`` — the single place
+    # they are defined. This file used to restate them, one of three copies that
+    # could drift from what the renderers actually accept (and one had, passing
+    # raw counts to donut's `values`, which means shares, so the canonical
+    # example rendered a slice labelled "300%").
+    @staticmethod
+    def _spec(kind: str) -> dict:
+        from brainhub_core.render.registry import registry
+
+        return registry.get(kind).example
 
     def setUp(self) -> None:
         self._tmp = tempfile.mkdtemp(prefix="brainhub-brand-renderers-")
@@ -202,12 +188,12 @@ class EveryRendererHonoursTheBrandPackTests(unittest.TestCase):
         load_renderers()
         return sorted(registry._renderers)
 
-    def test_every_registered_renderer_has_a_spec_here(self):
-        """A new renderer must be added to SPECS, not silently skipped."""
-        missing = [kind for kind in self._registered_kinds() if kind not in self.SPECS]
+    def test_every_registered_renderer_ships_an_example_spec(self):
+        """A renderer with no example is one nothing here can exercise."""
+        missing = [kind for kind in self._registered_kinds() if not self._spec(kind)]
         self.assertEqual(
             missing, [],
-            f"renderers with no spec in this test, so their brand handling is unverified: {missing}",
+            f"renderers with no registered example, so their brand handling is unverified: {missing}",
         )
 
     def test_every_renderer_renders_and_carries_the_pack_tokens(self):
@@ -226,7 +212,7 @@ class EveryRendererHonoursTheBrandPackTests(unittest.TestCase):
 
             for kind in kinds:
                 try:
-                    html = pipeline.build_document(kind, self.SPECS[kind], title="T").html
+                    html = pipeline.build_document(kind, self._spec(kind), title="T").html
                 except Exception as exc:  # noqa: BLE001 - collect, do not abort
                     failures.append(f"{kind}: {type(exc).__name__}: {exc}")
                     continue
@@ -252,7 +238,7 @@ class EveryRendererHonoursTheBrandPackTests(unittest.TestCase):
         with patch.dict(os.environ, {brand.BRAND_DIR_ENV: str(self.pack)}):
             from brainhub_core.render import pipeline
             importlib.reload(pipeline)
-            html = pipeline.build_document("bar-chart", self.SPECS["bar-chart"], title="T").html
+            html = pipeline.build_document("bar-chart", self._spec("bar-chart"), title="T").html
         self.assertIn("var(--series-1)", html)
 
 if __name__ == "__main__":

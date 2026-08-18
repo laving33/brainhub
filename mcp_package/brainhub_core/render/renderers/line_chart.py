@@ -19,15 +19,17 @@ import html
 import math
 
 from ..registry import RenderPart, RenderRequest, renderer
+from . import _chart_base
 from ._series_palette import series_color
 
 # SVG canvas + margins for axes/labels/legend.
 _WIDTH = 800
 _HEIGHT = 480
-# Prefixed so two charts inlined into one page cannot collide: with bare
-# id="title"/"desc" the second chart would be announced with the first one's
-# name, and any url(#…) reference would resolve to the wrong element.
-_ID_PREFIX = "bh-line-chart"
+# Base for the per-chart id prefix. A constant alone only separates line from
+# bar — two LINE charts on one page still emitted the same ids, and a screen
+# reader announced the second with the first one's name. The spec's content
+# hash is appended per render; see _chart_base.id_prefix.
+_ID_BASE = "bh-line-chart"
 _MARGIN_LEFT = 64
 _MARGIN_RIGHT = 24
 _MARGIN_TOP = 32
@@ -35,6 +37,8 @@ _MARGIN_BOTTOM = 64
 _PLOT_LEFT = _MARGIN_LEFT
 _PLOT_RIGHT = _WIDTH - _MARGIN_RIGHT
 _PLOT_TOP = _MARGIN_TOP
+# Set per render: a legend needs room under the plot, or it lands on the
+# x-axis labels (it did — the legend printed over the bottom y tick).
 _PLOT_BOTTOM = _HEIGHT - _MARGIN_BOTTOM
 _GRID_LINES = 4  # interior gridlines per axis (plus the 0/100% edges)
 
@@ -72,35 +76,35 @@ def _validate(spec: dict) -> None:
                 raise ValueError(f"series[{i}].points[{j}] must be finite (no NaN/Infinity)")
 
 
-def _fmt(n: float) -> str:
-    """Format a float compactly for SVG coordinates/tick labels."""
-    if n == int(n):
-        return str(int(n))
-    return f"{n:.2f}".rstrip("0").rstrip(".")
+_fmt = _chart_base.fmt_num
 
 
-def _nice_ticks(lo: float, hi: float, count: int) -> list[float]:
-    if lo == hi:
-        # Degenerate (single value) axis: fabricate a small span so the chart
-        # still draws sensible gridlines instead of dividing by zero.
-        lo -= 1.0
-        hi += 1.0
-    step = (hi - lo) / count
-    return [lo + step * i for i in range(count + 1)]
+_nice_ticks = _chart_base.nice_ticks
 
 
 @renderer(
     "line-chart",
     output_kind="chart",
     input_spec=_validate,
-    description="Line chart (pure inline SVG, no JS)",
+    description=(
+        "Line chart on a numeric x axis — points are [x, y] pairs, so x may be "
+        "irregular. For evenly spaced categories use `line`. Pure inline SVG, no JS."
+    ),
+    example={
+        "x_labels": ["一月", "二月"],
+        "series": [{"name": "營收", "points": [[0, 1], [1, 2]]}],
+    },
+    # Drawn as a <figcaption> under the plot.
+    self_titled=True,
 )
 def render(request: RenderRequest) -> RenderPart:
     spec = request.spec
     series = spec["series"]
     x_label = str(spec.get("x_label", "") or "")
     y_label = str(spec.get("y_label", "") or "")
-    title = str(spec.get("title", "") or "") or "Line chart"
+    # The caller's --title outranks the spec's; without it the figcaption read
+    # "Line chart" while the document was titled something else.
+    title = request.title or str(spec.get("title", "") or "") or "Line chart"
 
     all_x: list[float] = []
     all_y: list[float] = []
@@ -112,8 +116,18 @@ def render(request: RenderRequest) -> RenderPart:
         all_x.extend(x for x, _ in points)
         all_y.extend(y for _, y in points)
 
+    # A legend is drawn under the plot, so the plot has to end higher or the
+    # two overlap — the legend used to print across the bottom y tick label.
+    has_legend = len(norm_series) > 1 or (norm_series and norm_series[0][0])
+    plot_bottom = _chart_base.plot_bottom(bool(has_legend))
+
     x_min, x_max = min(all_x), max(all_x)
-    y_min, y_max = min(all_y), max(all_y)
+    # Ticks first, then scale to THEM: nice_ticks widens the range outward to
+    # round numbers, so scaling to the raw data range instead puts the outermost
+    # tick outside the plot — the bottom label printed below the x axis.
+    y_ticks = _nice_ticks(min(all_y), max(all_y), _GRID_LINES)
+    x_ticks = _nice_ticks(x_min, x_max, _GRID_LINES)
+    y_min, y_max = y_ticks[0], y_ticks[-1]
     x_span = (x_max - x_min) or 1.0
     y_span = (y_max - y_min) or 1.0
 
@@ -122,30 +136,25 @@ def render(request: RenderRequest) -> RenderPart:
 
     def sy(y: float) -> float:
         # SVG y grows downward; plot origin (y_min) sits at the bottom.
-        return _PLOT_BOTTOM - (y - y_min) / y_span * (_PLOT_BOTTOM - _PLOT_TOP)
+        return plot_bottom - (y - y_min) / y_span * (plot_bottom - _PLOT_TOP)
 
     parts: list[str] = []
-    # No xmlns attribute: this <svg> is inlined directly in an HTML5 document
-    # (not served as a standalone .svg file), so the browser's built-in
-    # foreign-content rules pick it up as SVG without a namespace declaration.
-    # This also keeps the artifact free of any "http://" substring so a
-    # release-hygiene / self-contained grep never false-positives on it.
-    # <title> is the FIRST child, before any <defs>/<style>: assistive tech may
-    # ignore one placed later. <desc> names the series so a screen-reader user
-    # gets the chart's content, not just its title — and both are referenced by
-    # aria-labelledby, because a bare <desc> is widely not announced at all.
-    series_names = "、".join(name for name, _ in norm_series)
-    desc = f"折線圖，{len(norm_series)} 個資料序列：{series_names}"
+    # role="img" makes the subtree presentational, so every <text> in the plot
+    # is hidden from a screen reader. The description therefore has to CARRY the
+    # data, not just describe the shape: "1 series over 3 points" tells a
+    # non-sighted reader nothing they could act on.
+    id_prefix = _chart_base.id_prefix(_ID_BASE, spec)
+    described = "；".join(
+        f"{name} 由 {_fmt(points[0][1])} 至 {_fmt(points[-1][1])}"
+        for name, points in norm_series
+        if points
+    )
+    desc = f"折線圖，{len(norm_series)} 個資料序列：{described}"
     parts.append(
-        f'<svg viewBox="0 0 {_WIDTH} {_HEIGHT}" role="img" '
-        f'aria-labelledby="{_ID_PREFIX}-title {_ID_PREFIX}-desc" '
-        f'style="max-width:100%;height:auto">'
-        f'<title id="{_ID_PREFIX}-title">{html.escape(title)}</title>'
-        f'<desc id="{_ID_PREFIX}-desc">{html.escape(desc)}</desc>'
+        _chart_base.svg_open(title=title, desc=desc, id_prefix=id_prefix)
     )
 
     # Gridlines + y tick labels.
-    y_ticks = _nice_ticks(y_min, y_max, _GRID_LINES)
     for ty in y_ticks:
         gy = sy(ty)
         parts.append(
@@ -158,25 +167,24 @@ def render(request: RenderRequest) -> RenderPart:
         )
 
     # x tick labels.
-    x_ticks = _nice_ticks(x_min, x_max, _GRID_LINES)
     for tx in x_ticks:
         gx = sx(tx)
         parts.append(
-            f'<line x1="{gx:.2f}" y1="{_PLOT_TOP}" x2="{gx:.2f}" y2="{_PLOT_BOTTOM}" '
+            f'<line x1="{gx:.2f}" y1="{_PLOT_TOP}" x2="{gx:.2f}" y2="{plot_bottom}" '
             f'stroke="var(--border)" stroke-width="1" stroke-opacity="0.5" />'
         )
         parts.append(
-            f'<text x="{gx:.2f}" y="{_PLOT_BOTTOM + 18}" text-anchor="middle" '
+            f'<text x="{gx:.2f}" y="{plot_bottom + 18}" text-anchor="middle" '
             f'font-size="12" fill="var(--muted)">{html.escape(_fmt(tx))}</text>'
         )
 
     # Axis lines.
     parts.append(
-        f'<line x1="{_PLOT_LEFT}" y1="{_PLOT_TOP}" x2="{_PLOT_LEFT}" y2="{_PLOT_BOTTOM}" '
+        f'<line x1="{_PLOT_LEFT}" y1="{_PLOT_TOP}" x2="{_PLOT_LEFT}" y2="{plot_bottom}" '
         f'stroke="var(--text)" stroke-width="1.5" />'
     )
     parts.append(
-        f'<line x1="{_PLOT_LEFT}" y1="{_PLOT_BOTTOM}" x2="{_PLOT_RIGHT}" y2="{_PLOT_BOTTOM}" '
+        f'<line x1="{_PLOT_LEFT}" y1="{plot_bottom}" x2="{_PLOT_RIGHT}" y2="{plot_bottom}" '
         f'stroke="var(--text)" stroke-width="1.5" />'
     )
 
@@ -187,14 +195,15 @@ def render(request: RenderRequest) -> RenderPart:
             f'text-anchor="middle" font-size="13" fill="var(--text)">{html.escape(x_label)}</text>'
         )
     if y_label:
-        cy = (_PLOT_TOP + _PLOT_BOTTOM) / 2
+        cy = (_PLOT_TOP + plot_bottom) / 2
         parts.append(
             f'<text x="16" y="{cy:.2f}" text-anchor="middle" font-size="13" '
             f'fill="var(--text)" transform="rotate(-90 16 {cy:.2f})">{html.escape(y_label)}</text>'
         )
 
     # One polyline per series, plus point markers.
-    legend_items: list[str] = []
+    legend_names: list[str] = []
+    legend_colors: list[str] = []
     for i, (name, points) in enumerate(norm_series):
         color = series_color(i)
         coords = " ".join(f"{sx(x):.2f},{sy(y):.2f}" for x, y in points)
@@ -205,33 +214,19 @@ def render(request: RenderRequest) -> RenderPart:
         for x, y in points:
             parts.append(f'<circle cx="{sx(x):.2f}" cy="{sy(y):.2f}" r="3" fill="{color}" />')
 
-        safe_name = html.escape(name) if name else f"Series {i + 1}"
-        ly = _PLOT_TOP + i * 18
-        legend_items.append(
-            f'<g transform="translate({_PLOT_RIGHT - 150},{ly})">'
-            f'<line x1="0" y1="0" x2="18" y2="0" stroke="{color}" stroke-width="2.5" />'
-            f'<text x="24" y="4" font-size="12" fill="var(--text)">{safe_name}</text>'
-            f"</g>"
-        )
-    if len(norm_series) > 1 or (norm_series and norm_series[0][0]):
-        parts.extend(legend_items)
+        legend_names.append(name if name else f"Series {i + 1}")
+        legend_colors.append(color)
+
+    # One legend strip under the plot, shared with bar-chart. It used to float
+    # inside the plot at PLOT_RIGHT-150, which collides with the data the moment
+    # a series rises into that corner — and nothing checked.
+    if has_legend:
+        parts.extend(_chart_base.legend(legend_names, legend_colors, swatch="line"))
 
     parts.append("</svg>")
     svg = "".join(parts)
 
-    safe_title = html.escape(title)
-    body = (
-        '<figure class="brainhub-line-chart">'
-        f"{svg}"
-        f"<figcaption>{safe_title}</figcaption>"
-        "</figure>"
-    )
-    head = (
-        "<style>"
-        ".brainhub-line-chart{margin:0;}"
-        ".brainhub-line-chart svg{display:block;}"
-        ".brainhub-line-chart figcaption{margin-top:8px;font-size:13px;color:var(--muted);text-align:center;}"
-        "</style>"
-    )
+    body = _chart_base.figure(svg, title, css_class="brainhub-line-chart")
+    head = f"<style>{_chart_base.figure_css('brainhub-line-chart')}</style>"
 
     return RenderPart(body=body, head=head, title=title)

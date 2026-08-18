@@ -100,6 +100,9 @@ def _diagram_source(spec: dict) -> str:
         f"Mermaid diagram ({len(VERIFIED_DIAGRAM_TYPES)} verified offline types: "
         f"{', '.join(VERIFIED_DIAGRAM_TYPES)})"
     ),
+    example={"diagram": "graph TD; 需求-->設計; 設計-->實作;"},
+    # Mermaid draws no title of its own, so the shell heading has to carry it.
+    self_titled=False,
 )
 def render(request: RenderRequest) -> RenderPart:
     spec = request.spec

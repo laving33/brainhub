@@ -202,6 +202,9 @@ def _render_tabs(sections: list[dict], static: bool) -> str:
     output_kind="html",
     input_spec=_validate,
     description="Interactive briefing (tabs/accordion)",
+    example={"sections": [{"heading": "摘要", "body": "<p>內文</p>"}]},
+    # No title of its own: the shell heading names it.
+    self_titled=False,
 )
 def render(request: RenderRequest) -> RenderPart:
     spec = request.spec

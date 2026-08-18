@@ -63,6 +63,17 @@ class Renderer:
     # input. Runs before render_fn so renderers can assume a clean spec.
     input_spec: Callable[[dict], None] | None = None
     description: str = ""
+    # A minimal spec that renders. This is the kind's spec documentation: the
+    # field names differ per kind (labels / categories / x_labels / col_labels /
+    # segment_names all name the same idea somewhere), and nothing else in the
+    # tree states them. Callers read it, tests render it, and
+    # scripts/check_docs_sync.py fails when a registered kind has none — so the
+    # example cannot rot into a different shape than the renderer accepts.
+    example: dict = field(default_factory=dict)
+    # Does the rendered output draw its own visible title? The document layer
+    # suppresses the shell heading only for these, or the artifact ends up with
+    # the title twice — or, as shipped before, with neither.
+    self_titled: bool = False
 
 
 class RendererError(ValueError):
@@ -111,6 +122,8 @@ def register(
     output_kind: str = "html",
     input_spec: Callable[[dict], None] | None = None,
     description: str = "",
+    example: dict | None = None,
+    self_titled: bool = False,
 ) -> Renderer:
     """Register a renderer on the shared singleton. Returns the record."""
     return registry.register(
@@ -120,6 +133,8 @@ def register(
             output_kind=output_kind,
             input_spec=input_spec,
             description=description,
+            example=dict(example or {}),
+            self_titled=self_titled,
         )
     )
 
@@ -130,6 +145,8 @@ def renderer(
     output_kind: str = "html",
     input_spec: Callable[[dict], None] | None = None,
     description: str = "",
+    example: dict | None = None,
+    self_titled: bool = False,
 ) -> Callable[[Callable[[RenderRequest], RenderPart]], Callable[[RenderRequest], RenderPart]]:
     """Decorator form of :func:`register`.
 
@@ -149,6 +166,8 @@ def renderer(
             output_kind=output_kind,
             input_spec=input_spec,
             description=description,
+            example=example,
+            self_titled=self_titled,
         )
         return fn
 

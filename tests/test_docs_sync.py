@@ -36,8 +36,15 @@ def _write_tree(root: Path, kinds, diagrams) -> None:
     (root / "mcp_package" / "README.md").write_text(
         f"renderers: {kind_list}\n", encoding="utf-8"
     )
+    # The skill also carries the spec table, so it must name every field of
+    # every registered example.
+    fields = sorted(
+        {field for k in kinds for field in render.registry.get(k).example}
+    )
     (root / "skills" / "46m-bh-runtime" / "SKILL.md").write_text(
-        f"renderers: {kind_list}\n\nmermaid: {diagram_list}\n", encoding="utf-8"
+        f"renderers: {kind_list}\n\nmermaid: {diagram_list}\n\n"
+        f"spec fields: {', '.join(fields)}\n",
+        encoding="utf-8",
     )
     (root / "mcp_package" / "brainhub_mcp" / "server.py").write_text(
         f'def bh_build(renderer, spec):\n    """Render a spec.\n\n'

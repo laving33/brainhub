@@ -20,31 +20,6 @@ _spec = importlib.util.spec_from_file_location(
 verify_artifact = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(verify_artifact)
 
-# Minimal valid spec per registered kind. Shares its shape with
-# tests/test_render_report_charts.py; kept here so this file stands alone.
-SPECS = {
-    "bar": {"title": "T", "values": [3, 1], "labels": ["甲", "乙"]},
-    "donut": {"title": "T", "values": [3, 1], "labels": ["甲", "乙"]},
-    "gauge": {"title": "T", "value": 0.42},
-    "heatmap": {"title": "T", "rows": [{"label": "列", "values": [1, 2]}],
-                "col_labels": ["甲", "乙"]},
-    "kpi": {"title": "T", "tiles": [{"label": "營收", "value": "1,234"}]},
-    "line": {"title": "T", "series": [{"name": "s", "values": [1, 2]}],
-             "x_labels": ["一", "二"]},
-    "stacked-bar": {"title": "T", "rows": [{"label": "列", "segments": [1, 2]}],
-                    "segment_names": ["甲", "乙"]},
-    "funnel": {"title": "T", "stages": [{"label": "甲", "value": 10},
-                                        {"label": "乙", "value": 5}]},
-    "scatter": {"title": "T", "points": [{"x": 1, "y": 2, "label": "點"}]},
-    "bar-chart": {"title": "T", "categories": ["甲", "乙"],
-                  "series": [{"name": "s", "values": [1, 2]}]},
-    "line-chart": {"title": "T", "x_labels": ["一", "二"],
-                   "series": [{"name": "s", "points": [[0, 1], [1, 2]]}]},
-    "mermaid": {"title": "T", "diagram": "graph TD; 甲-->乙;"},
-    "interactive-html": {"title": "T", "sections": [{"heading": "節",
-                                                     "body": "<p>中文</p>"}]},
-}
-
 # A structurally complete document, so element_count clears the meta-assert.
 SHELL = (
     "<!DOCTYPE html><html><head><meta charset='utf-8'><title>t</title>"
@@ -161,11 +136,14 @@ class ArtifactLinterTests(unittest.TestCase):
 
 
 class EveryRendererProducesACleanArtifactTests(unittest.TestCase):
-    """The gate that matters: real output of every registered kind."""
+    """The gate that matters: real output of every registered kind.
 
-    def test_every_registered_kind_has_a_spec_here(self):
-        missing = [k for k in render.registry.kinds() if k not in SPECS]
-        self.assertEqual(missing, [], f"kinds with no spec in this test: {missing}")
+    Specs come from each renderer's registered ``example`` — the one place they
+    are defined. They used to be copied into three test files, which meant the
+    de-facto spec documentation could disagree with itself, and did: the donut
+    example passed raw counts to a field that means shares, so the canonical
+    example rendered a slice labelled "300%".
+    """
 
     def test_every_kind_builds_a_clean_artifact(self):
         with tempfile.TemporaryDirectory() as td:
@@ -173,7 +151,9 @@ class EveryRendererProducesACleanArtifactTests(unittest.TestCase):
                 with self.subTest(kind=kind):
                     path = Path(td) / f"{kind}.html"
                     path.write_text(
-                        render.build_document(kind, SPECS[kind], title="標題").html,
+                        render.build_document(
+                            kind, render.registry.get(kind).example, title="標題"
+                        ).html,
                         encoding="utf-8",
                     )
                     self.assertEqual(verify_artifact.verify(path), [])
