@@ -39,6 +39,9 @@ from ._series_palette import series_color
 
 _WIDTH = 800
 _HEIGHT = 480
+# Prefixed so two charts on one page cannot collide on id="title"/"desc" — the
+# second would otherwise be announced with the first one's name.
+_ID_PREFIX = "bh-bar-chart"
 _MARGIN_TOP = 30
 _MARGIN_RIGHT = 30
 _MARGIN_LEFT = 60
@@ -231,10 +234,20 @@ def render(request: RenderRequest) -> RenderPart:
                 f'font-size="12" fill="var(--text)">{html.escape(name)}</text>'
             )
 
+    # <title> first, before anything else in the <svg>: assistive tech may skip
+    # one placed later. aria-labelledby names both, because a <desc> that nothing
+    # references is widely not announced.
+    svg_title = title or "Bar chart"
+    svg_desc = (
+        f"長條圖，{n_categories} 個類別、{n_series} 個資料序列："
+        + "、".join(name for name, _ in series)
+    )
     svg = (
         f'<svg viewBox="0 0 {_WIDTH} {_HEIGHT}" role="img" '
-        f'aria-label="{html.escape(title or "Bar chart")}" '
+        f'aria-labelledby="{_ID_PREFIX}-title {_ID_PREFIX}-desc" '
         'style="max-width:100%;height:auto;font-family:inherit;">'
+        f'<title id="{_ID_PREFIX}-title">{html.escape(svg_title)}</title>'
+        f'<desc id="{_ID_PREFIX}-desc">{html.escape(svg_desc)}</desc>'
         + "".join(parts)
         + "</svg>"
     )

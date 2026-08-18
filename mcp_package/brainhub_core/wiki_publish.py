@@ -26,7 +26,7 @@ imports it.
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -81,7 +81,7 @@ def document_path(wiki_dir: Path, handle: str) -> Path:
 
 
 def _now_iso() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _rebuild_graph_indexes(wiki_dir: Path) -> set[str]:

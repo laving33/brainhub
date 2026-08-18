@@ -126,6 +126,34 @@ invisible to a text scanner and would silently render unstyled, and scanning the
 whole package would let renaming a Python variable change the shipped
 stylesheet. `build/README.md` has the measurements behind both rules.
 
+## Adding a renderer
+
+Each step names the gate that fails if you skip it, so none of this depends on
+remembering:
+
+1. Drop one module into `mcp_package/brainhub_core/render/renderers/`, calling
+   `@renderer("my-kind", output_kind=..., input_spec=..., description=...)`.
+   Discovery is automatic — no edit to the registry, the CLI, or the MCP server.
+2. Add a minimal valid spec to `tests/test_brand_pack_core.py` and
+   `tests/test_verify_artifact.py`. *Both files fail on any registered kind they
+   have no spec for*, so a new renderer cannot enter uncovered.
+3. Name the kind in `README.md`, `mcp_package/README.md`,
+   `skills/46m-bh-runtime/SKILL.md`, and the `bh_build` docstring — or declare
+   the omission with a reason in `scripts/check_docs_sync.py`'s
+   `RENDERER_OMISSIONS`. *`scripts/check_docs_sync.py` fails otherwise*, and it
+   also fails on an exemption for a kind that no longer exists.
+4. If the renderer emits an `<svg>`, give it `role="img"`, a `<title>` as the
+   first child, a non-empty `<desc>`, and `aria-labelledby` naming both — with
+   ids prefixed by the renderer, never bare `title`/`desc`. *`tests/
+   test_render_a11y_contract.py` fails otherwise.*
+5. If it emits script, it must be a generated constant, never assembled from
+   caller data, and it must not use an `onclick=` attribute. *`scripts/
+   verify_artifact.py` fails on the attribute, and the artifact's own hashed
+   CSP refuses any script the build did not produce.*
+
+Fix the source of truth rather than widening a gate: each of these caught a real
+defect the first time it ran.
+
 ## Agent access
 
 Agents use the local stdio MCP connection (`pip install ./mcp_package`,

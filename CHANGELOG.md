@@ -1,5 +1,109 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- **Artifacts no longer permit arbitrary inline script.** `script-src` was
+  `'unsafe-inline'`, so any `<script>` that reached the markup would run —
+  escaping was the only thing standing between a chart label or diagram source
+  and execution. Each artifact now pins the sha256 of every script it actually
+  carries, and admits nothing else. Verified in headless Chromium: a smuggled
+  `<script>` is refused while every renderer's own scripts still run.
+  - The PDF button's `onclick` moved into a script, because an event-handler
+    attribute cannot be covered by a hash and one of them would have forced the
+    whole document back to `'unsafe-inline'`.
+  - Anything splicing script into a built artifact must now call
+    `render.document.authorize_injected_scripts`; the viewer's PDF-button
+    upgrade and print-reveal shim do. Artifacts built before this change keep
+    the permissive policy and are unaffected.
+
+### Added
+
+- **`scripts/verify_artifact.py`** — checks a built artifact carries no remote
+  reference, no executable attribute, no nested-document tag, and no non-image
+  `data:` URL. This is the static mirror of the CSP: a CSP is enforced in the
+  reader's browser, where a violation renders wrong silently and nobody who
+  built the file finds out. Runs over all 13 kinds in the test suite. Its first
+  run found every artifact shipping an inline `onclick`.
+- **`scripts/check_docs_sync.py`** — the renderer registry and the verified
+  mermaid type list are executable facts restated in five prose surfaces. This
+  fails when any of them falls behind, with per-kind exemptions that are
+  themselves checked for staleness.
+- **`.github/workflows/ci.yml`** — the suite previously ran only when somebody
+  remembered. Matrix over Python 3.10 and 3.12; every gate runs even after an
+  earlier one fails; installs `./mcp_package` and nothing else.
+- Tests for what already existed but was never enforced: the version string
+  across five files, the series palette against `validate_palette.py` in both
+  modes, and the accessible-name contract for chart SVGs.
+
+### Fixed
+
+- **The mermaid init script never ran.** The vendored bundle's shim exposes the
+  API at `__esbuild_esm_mermaid_nm.mermaid.default` (the bare `.mermaid` is the
+  ESM module namespace), and the init script executed in `<head>` before the
+  container element existed — so `initialize()` threw, the error handler itself
+  crashed on a null container, and diagrams only rendered because mermaid's own
+  auto-start defaults kicked in. Consequence until now: `securityLevel:
+  'strict'`, the `neutral` theme, and the `data-brainhub-ready` signal were
+  silently never applied. The script now resolves `.default` and defers until
+  `DOMContentLoaded`; a regression test pins both.
+- The mermaid diagram source is no longer duplicated into a dead JS string
+  literal in the init script — it reaches the page only as html-escaped text in
+  the `<pre class="mermaid">` block, removing the `</script>` breakout surface
+  entirely.
+- A report-chart spec with an unknown key now raises `ValueError` (which
+  `bh build` and `bh_build` report cleanly) instead of leaking `TypeError` from
+  the chart function's kwargs.
+- `bh_build`'s MCP docstring and `mcp_package/README.md` no longer claim only 4
+  renderers exist; both now list all 13 kinds, and the docstring gained a
+  job-based selection guide and a diagram complexity budget.
+- **Python 3.10 works again — the declared floor had never been run.**
+  `pyproject.toml` claims `>=3.10` while `uv.lock` pins the dev environment to
+  `>=3.12`, so nothing ever executed the floor; four modules imported
+  `datetime.UTC`, which is 3.11+, and every one of them failed at import on
+  3.10. Replaced with `timezone.utc`. Found by adding 3.10 to the new CI matrix
+  and confirmed by running the full suite on a provisioned 3.10 interpreter.
+
+### Added
+
+- **22 mermaid diagram types verified offline.** Each rendered end-to-end in
+  headless Chromium against the artifact CSP (no network): flowchart, sequence,
+  class, state, gantt, pie, ER, journey, quadrant, timeline, mindmap, gitGraph,
+  xychart, sankey, kanban, packet, block, radar, treemap, C4, architecture
+  (built-in icons), and venn. The verified list is documented in the renderer,
+  README, and the `46m-bh-runtime` skill, with stand-ins for the types that have
+  no first-class support (swimlane → `flowchart` + `subgraph`, org chart →
+  `flowchart TD`, layer stack → `block-beta`).
+- Mermaid diagrams now carry an accessible name. Mermaid emits its `<svg>` as
+  `role="graphics-document"` with no name at all, so a diagram announced as an
+  unnamed graphic; the init script now labels it from the artifact title. The
+  document shell deliberately does NOT wrap chart bodies in an outer
+  `role="img"` — that would make the graphic's own `<title>`/`<desc>` subtree
+  presentational, which is worse than the gap it closes.
+- The mermaid renderer now honours the caller's title (`bh build --title`,
+  `bh_build(title=…)`); it previously read only the spec's `title` key, so a
+  caller-supplied title named the document but not the diagram inside it.
+- Dedicated test file for the 9 report-chart kinds
+  (`tests/test_render_report_charts.py`) — previously they were covered only
+  indirectly by the brand-pack suite.
+- Artifacts now honour `prefers-reduced-motion: reduce` unconditionally. The
+  motion-flattening CSS existed but shipped only for `--static` builds, which
+  is a build-time choice about capture; the reader's OS accessibility setting
+  was reaching nothing but one button transition.
+- `bar-chart` and `line-chart` SVGs now carry `<title>`/`<desc>` with prefixed
+  ids and `aria-labelledby`, replacing a bare `aria-label` and no description
+  at all. Bare `id="title"`/`id="desc"` are refused by test: two charts on one
+  page would make the second announce the first one's name.
+
+### Known gaps
+
+- `vendor/report_chart.py`'s `<svg>` puts `<style>` before `<title>`, gives
+  title/desc no ids, and has no `aria-labelledby` — so its `<desc>` is widely
+  not announced. The fix belongs upstream (`lab/catalog`): the file is a
+  byte-frozen mirror guarded by `tests/test_brand_assets.py`, and patching it
+  here is precisely the silent drift that guard exists to catch.
+
 ## 2.0.0
 
 A breaking release. Every rename below is deliberate and has **no backward

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .files import atomic_write_json
@@ -92,7 +92,7 @@ def assign(root: Path, path: Path) -> str:
         entry = registry[existing]
         if entry.get("sha256") != digest:
             entry["sha256"] = digest
-            entry["updated_at"] = datetime.now(UTC).isoformat()
+            entry["updated_at"] = datetime.now(timezone.utc).isoformat()
             _save_registry(root, registry)
         return existing
 
@@ -100,7 +100,7 @@ def assign(root: Path, path: Path) -> str:
     registry[sid] = {
         "path": rel,
         "sha256": digest,
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     _save_registry(root, registry)
     return sid

@@ -24,6 +24,10 @@ from ._series_palette import series_color
 # SVG canvas + margins for axes/labels/legend.
 _WIDTH = 800
 _HEIGHT = 480
+# Prefixed so two charts inlined into one page cannot collide: with bare
+# id="title"/"desc" the second chart would be announced with the first one's
+# name, and any url(#…) reference would resolve to the wrong element.
+_ID_PREFIX = "bh-line-chart"
 _MARGIN_LEFT = 64
 _MARGIN_RIGHT = 24
 _MARGIN_TOP = 32
@@ -126,10 +130,18 @@ def render(request: RenderRequest) -> RenderPart:
     # foreign-content rules pick it up as SVG without a namespace declaration.
     # This also keeps the artifact free of any "http://" substring so a
     # release-hygiene / self-contained grep never false-positives on it.
+    # <title> is the FIRST child, before any <defs>/<style>: assistive tech may
+    # ignore one placed later. <desc> names the series so a screen-reader user
+    # gets the chart's content, not just its title — and both are referenced by
+    # aria-labelledby, because a bare <desc> is widely not announced at all.
+    series_names = "、".join(name for name, _ in norm_series)
+    desc = f"折線圖，{len(norm_series)} 個資料序列：{series_names}"
     parts.append(
         f'<svg viewBox="0 0 {_WIDTH} {_HEIGHT}" role="img" '
-        f'aria-label="{html.escape(title, quote=True)}" '
+        f'aria-labelledby="{_ID_PREFIX}-title {_ID_PREFIX}-desc" '
         f'style="max-width:100%;height:auto">'
+        f'<title id="{_ID_PREFIX}-title">{html.escape(title)}</title>'
+        f'<desc id="{_ID_PREFIX}-desc">{html.escape(desc)}</desc>'
     )
 
     # Gridlines + y tick labels.

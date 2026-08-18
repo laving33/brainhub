@@ -1,0 +1,71 @@
+name: CI
+
+# The engine, CLI and viewer are standard-library-only; `brainhub-mcp` is not
+# (markdown-it-py, mdit-py-plugins, linkify-it-py, mcp, fonttools/brotli), and
+# parts of the suite import them. So this installs the package and nothing
+# else — no test runner, no linter, no requirements file. A step that needs a
+# dependency beyond `./mcp_package` is the signal one crept in.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify (python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      # One version failing must not cancel the others: "works on 3.12, broken
+      # on 3.10" is exactly the result worth seeing in full.
+      fail-fast: false
+      matrix:
+        # 3.10 is the floor mcp_package/pyproject.toml claims, and uv.lock pins
+        # the dev environment to >=3.12 — so until this matrix existed the floor
+        # was never run, and it was in fact broken (`datetime.UTC` is 3.11+).
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the MCP package and its dependencies
+        run: python -m pip install --disable-pip-version-check ./mcp_package
+
+      # Every gate runs even after an earlier one fails, so one push surfaces
+      # every problem instead of one problem per round trip.
+      - name: Unit tests
+        id: unittest
+        if: always()
+        run: python -m unittest discover -s tests
+
+      - name: Docs in sync with the registry
+        id: docs_sync
+        if: always()
+        run: python scripts/check_docs_sync.py
+
+      - name: Runtime helper duplication
+        id: duplication
+        if: always()
+        run: python scripts/check_runtime_duplication.py
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "| Gate | Result |"
+            echo "|---|---|"
+            echo "| Unit tests | ${{ steps.unittest.outcome }} |"
+            echo "| Docs sync | ${{ steps.docs_sync.outcome }} |"
+            echo "| Duplication | ${{ steps.duplication.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

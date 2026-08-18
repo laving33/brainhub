@@ -9,7 +9,7 @@ import os
 import shutil
 import sys
 import tempfile
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import brainhub_engine
@@ -164,7 +164,7 @@ def add_artifact(
         "source_name": source.name,
         "stored_path": destination.relative_to(workspace).as_posix(),
         "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     metadata_path = destination.with_name(destination.name + ".meta.json")
     metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
@@ -284,8 +284,8 @@ def update_artifact(
         "source_name": source.name,
         "stored_path": destination.relative_to(workspace).as_posix(),
         "sha256": new_sha,
-        "created_at": previous.get("created_at") or datetime.now(UTC).isoformat(),
-        "updated_at": datetime.now(UTC).isoformat(),
+        "created_at": previous.get("created_at") or datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
         "revision": revision,
     }
     metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")

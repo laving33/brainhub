@@ -68,6 +68,42 @@ cross-VPS sync mechanism.
 7. Promote deliberately: artifacts first, then create or update source-backed
    wiki pages, and propose durable memory only after explicit user approval.
 
+## Building charts and diagrams (`bh build` / `bh_build`)
+
+Pick the renderer by the data's job, not by familiarity:
+
+| The reader must… | Renderer |
+|---|---|
+| See one headline value (+ delta) | `kpi` |
+| Follow a trend over time | `line` |
+| Compare ranked magnitudes | `bar` |
+| See part-to-whole composition | `stacked-bar` |
+| Read magnitude across a grid | `heatmap` |
+| Judge correlation / quadrants | `scatter` |
+| See stage-by-stage drop-off | `funnel` |
+| Understand structure, flow, or process | `mermaid` |
+| Navigate a tabbed briefing | `interactive-html` |
+
+The registry holds 13 kinds; the four this table leaves out are deliberate, not
+missing. `donut` and `gauge` are registered and supported but cautioned — a
+part-to-whole reads better as `stacked-bar` and a single ratio as a linear
+meter, so reach for them only when a house report format demands the shape.
+`line-chart` and `bar-chart` are the legacy spec shape kept for older callers;
+new work uses `line` and `bar`.
+
+`mermaid` covers 22 offline-verified diagram types (flowchart, sequence,
+class, state, gantt, pie, ER, journey, quadrant, timeline, mindmap, gitGraph,
+xychart, sankey, kanban, packet, block, radar, treemap, C4, architecture with
+built-in icons, venn — venn keywords are singular: `set A` / `union A, B`).
+No first-class swimlane/org-chart/layer-stack exists: use `flowchart` +
+`subgraph` lanes, `flowchart TD`, and `block-beta` respectively.
+
+Complexity budget for any diagram: at most ~9 nodes, ~12 edges, 4 levels of
+depth, 5 sequence lifelines. Past the budget, split into one overview diagram
+plus per-area detail diagrams — a denser single diagram reads worse, not
+more complete. Every node must earn its place; if a relationship is obvious
+from layout, drop the arrow.
+
 Do not expose the viewer, add remote MCP transport, copy artifacts across
 Runtime Nodes automatically, or silently convert a workflow artifact into
 memory. See `BRAINHUB.md` and `docs/brainhub.html` for installation and

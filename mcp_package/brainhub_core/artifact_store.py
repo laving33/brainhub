@@ -20,7 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -55,7 +55,7 @@ def build_and_store_artifact(
     name collision — the same fail-closed contract the CLI verb had.
     """
     workspace = workspace.expanduser().resolve()
-    created_at = datetime.now(UTC).isoformat()
+    created_at = datetime.now(timezone.utc).isoformat()
     embedded_provenance = {
         "task": task,
         "agent": agent,

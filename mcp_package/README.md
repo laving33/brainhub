@@ -124,9 +124,10 @@ checkout and initialize its local workspace before configuring MCP; see
 BrainHub also exposes six document + artifact tools on both the slim and full
 surfaces: `bh_publish` (publish/update a source-backed wiki document in place),
 `bh_read` (read one back by handle), `bh_search` (handles + snippets), `bh_link`
-(add a wikilink between existing pages), `bh_build` (render a mermaid /
-line-chart / bar-chart / interactive-html spec into one self-contained HTML
-artifact stored with strippable provenance), and `bh_export` (write a
+(add a wikilink between existing pages), `bh_build` (render a spec into one
+self-contained HTML artifact stored with strippable provenance — 13 renderers:
+kpi / line / bar / stacked-bar / heatmap / scatter / funnel / donut / gauge /
+mermaid / line-chart / bar-chart / interactive-html), and `bh_export` (write a
 provenance-stripped client copy into the workspace `artifacts/exports/`
 directory). The workspace is pinned server-side from `--wiki`; none of these
 tools accept a caller-supplied workspace or output path, and `bh_export` rejects

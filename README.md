@@ -80,9 +80,19 @@ Engine verbs beyond the core set (`health`, `doctor --fix`, `validate`,
 
 ## Artifacts (charts, diagrams, interactive HTML, PDF)
 
+13 renderers: 9 report-chart kinds (`kpi`, `line`, `bar`, `stacked-bar`,
+`heatmap`, `scatter`, `funnel`, `donut`, `gauge`), `mermaid`, the legacy
+`line-chart` / `bar-chart`, and `interactive-html`. The `mermaid` renderer
+covers 22 diagram types verified to render fully offline under the artifact
+CSP: flowchart, sequence, class, state, gantt, pie, ER, user journey,
+quadrant, timeline, mindmap, gitGraph, xychart, sankey, kanban, packet,
+block, radar, treemap, C4 context, architecture (built-in icons), and venn.
+For a swimlane use `flowchart` with `subgraph` lanes; for an org chart use
+`flowchart TD`; for a layer stack use `block-beta`.
+
 ```bash
-# Render a spec into ONE self-contained HTML file (9 chart types, mermaid,
-# interactive HTML) — zero external requests, safe to email:
+# Render a spec into ONE self-contained HTML file — zero external requests,
+# safe to email:
 bh build spec.json ~/team-brain --renderer line-chart --task "weekly report"
 
 # Render a Markdown file into a brand-styled, print-ready HTML document:
@@ -191,8 +201,22 @@ python3 scripts/loadtest_http_viewer.py --users 30
 ## Maintainer notes
 
 ```bash
-python3 -m unittest discover -s tests   # 1085 tests, stdlib only (pytest works too)
+python3 -m unittest discover -s tests    # the suite (pytest works too)
+python3 scripts/check_docs_sync.py       # docs still describe the real registry
+python3 scripts/verify_artifact.py FILE  # a built artifact is self-contained
+python3 scripts/check_runtime_duplication.py
 ```
+
+CI (`.github/workflows/ci.yml`) runs the first, second and fourth of those on
+Python 3.10 and 3.12, and every gate runs even after an earlier one fails, so
+one push reports every problem rather than one per round trip. The engine, CLI
+and viewer are standard-library-only; the suite additionally needs
+`brainhub-mcp`'s dependencies (`pip install ./mcp_package`).
+
+Prose that restates a fact the code owns is checked, not trusted: the renderer
+list, the verified mermaid diagram list, the version string across five files,
+and the chart palette all have gates. Adding a renderer touches several of them
+— `BRAINHUB.md` lists the steps, each naming the gate that fails if skipped.
 
 - `brainhub.py` — product CLI (publish/read/search/link/build/render/export);
   forwards unknown verbs to the engine.

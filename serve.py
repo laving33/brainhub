@@ -185,6 +185,9 @@ from brainhub_core.web_http import (
     validate_local_host_header as _core_validate_local_host_header,
     ViewerTransportConfig as _CoreViewerTransportConfig,
 )
+from brainhub_core.render.document import (
+    authorize_injected_scripts as _core_authorize_injected_scripts,
+)
 from brainhub_core.render.pdf import (
     find_pdf_renderer as _core_find_pdf_renderer,
     pdf_unavailable_reason as _core_pdf_unavailable_reason,
@@ -2174,6 +2177,9 @@ def _artifact_pdf_bytes(artifact_path: Path) -> bytes | None:
             if "</body>" in html_text
             else html_text + _PDF_REVEAL
         )
+        # An artifact built with a hash-pinned script-src would otherwise refuse
+        # the reveal shim, and the PDF would capture the collapsed state.
+        injected = _core_authorize_injected_scripts(injected, _PDF_REVEAL)
         with tempfile.TemporaryDirectory() as td:
             src = Path(td) / "artifact.html"
             src.write_text(injected, encoding="utf-8")
@@ -3678,6 +3684,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # (file://) opens keep the baked window.print fallback untouched.
         if b"brainhub-pdf-button" in data and b"</body>" in data:
             data = _inject_before_body_end(data, _PDF_BUTTON_UPGRADE)
+            data = _core_authorize_injected_scripts(
+                data.decode("utf-8"), _PDF_BUTTON_UPGRADE.decode("utf-8")
+            ).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self._artifact_security_headers()

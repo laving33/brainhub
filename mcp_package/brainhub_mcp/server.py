@@ -1721,7 +1721,19 @@ def bh_build(
 ) -> str:
     """Render a spec into ONE self-contained HTML artifact (zero external requests).
 
-    renderer is one of: mermaid, line-chart, bar-chart, interactive-html.
+    renderer is one of: kpi, line, bar, stacked-bar, heatmap, scatter, funnel,
+    donut, gauge, mermaid, line-chart, bar-chart, interactive-html. Pick by the
+    data's job: single headline value -> kpi; trend over time -> line; ranked
+    comparison -> bar; part-to-whole over categories -> stacked-bar; grid
+    magnitude -> heatmap; correlation -> scatter; stage drop-off -> funnel;
+    structure/relationships/process -> mermaid (22 offline diagram types incl.
+    flowchart, sequence, class, state, gantt, pie, ER, journey, quadrant,
+    timeline, mindmap, sankey, kanban, block, radar, treemap, C4, architecture,
+    venn; swimlane = flowchart+subgraph, org chart = flowchart TD); tabbed
+    briefing -> interactive-html. Keep diagrams sparse: at most ~9 nodes and
+    ~12 edges per mermaid diagram — past that, split into an overview plus
+    detail diagrams.
+
     spec is a JSON-object string describing what to draw. static flattens
     animation for headless PNG/PDF capture. related is a comma/newline-separated
     list of related wiki/knowledge references (recorded as provenance). The file

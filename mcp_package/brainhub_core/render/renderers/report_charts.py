@@ -45,8 +45,13 @@ def _make(fn):
         spec = dict(request.spec)
         title = str(spec.get("title", "") or "") or None
         # spec keys == fn kwargs; report_chart escapes its own text and returns
-        # a self-contained <svg> string.
-        svg = fn(**spec)
+        # a self-contained <svg> string. A wrong/unknown key surfaces from
+        # CPython as TypeError — normalize to ValueError so every caller's
+        # bad-spec handling (CLI, bh_build) sees one exception type.
+        try:
+            svg = fn(**spec)
+        except TypeError as exc:
+            raise ValueError(f"invalid spec for this renderer: {exc}") from exc
         body = f'<figure class="brainhub-report-chart">{svg}</figure>'
         return RenderPart(body=body, head=_HEAD, title=title)
 

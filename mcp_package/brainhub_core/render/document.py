@@ -28,10 +28,13 @@ mermaid bundle.
 """
 from __future__ import annotations
 
+import base64
+import hashlib
 import html
 import json
 import os
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 from .. import brand as _brand
@@ -43,10 +46,29 @@ VENDOR_DIR = _LINK_CORE_DIR / "vendor"
 
 # Content-Security-Policy applied to every artifact via a <meta> tag so the
 # guarantee travels with the file (file://, any static host, an email preview).
-# default-src 'none' denies ALL network by default; only inline styles/scripts
-# and data: images/fonts are permitted. Derived from web_http's page + SVG CSPs;
-# script-src 'unsafe-inline' is required because chart/mermaid renderers run
-# inline JS (the SVG CSP's script-src 'none' would blank them).
+# default-src 'none' denies ALL network by default; only inline styles and
+# data: images/fonts are permitted. Derived from web_http's page + SVG CSPs.
+#
+# script-src is NOT 'unsafe-inline'. Every script an artifact carries is one we
+# generated, so each is pinned by its sha256 (see :func:`script_hashes`) and
+# anything else — a <script> smuggled in through a chart label, a diagram
+# source, a section body — is refused by the browser even if it somehow reaches
+# the markup unescaped. Escaping is still the primary defence; this is the layer
+# that holds when escaping has a hole. Note a hash cannot authorise an
+# ``onclick=`` attribute, which is why the PDF button wires itself in JS.
+_CSP_WITHOUT_SCRIPT_SRC = (
+    "default-src 'none'; "
+    "img-src 'self' data:; "
+    "style-src 'unsafe-inline'; "
+    "font-src data:; "
+    "base-uri 'none'; "
+    "form-action 'none'"
+)
+
+# The permissive policy, kept for artifacts built BEFORE script hashing (they
+# carry unhashed inline scripts and an ``onclick=`` PDF button) — serve.py still
+# sends this as the HTTP header so those keep working. New artifacts additionally
+# carry the stricter <meta> policy below, and a browser enforces both.
 ARTIFACT_CONTENT_SECURITY_POLICY = (
     "default-src 'none'; "
     "img-src 'self' data:; "
@@ -57,10 +79,82 @@ ARTIFACT_CONTENT_SECURITY_POLICY = (
     "form-action 'none'"
 )
 
+# Matches the browser's own tokenizer rule: a script element's text ends at the
+# first "</script", regardless of JS string/comment context. Anything that would
+# split differently here than in the browser would produce a hash the browser
+# never computes, so the script would be silently blocked.
+_SCRIPT_RE = re.compile(r"<script\b[^>]*>(.*?)</script\s*>", re.DOTALL | re.IGNORECASE)
+# Stands in for the policy during assembly; see wrap_document's two passes.
+_CSP_PLACEHOLDER = "\x00brainhub-csp\x00"
+_META_CSP_RE = re.compile(
+    r'(<meta http-equiv="Content-Security-Policy" content=")([^"]*)(">)',
+    re.IGNORECASE,
+)
+# Captures just the script-src directive's source list, up to the next directive.
+_SCRIPT_SRC_RE = re.compile(r"script-src([^;]*)", re.IGNORECASE)
+
+
+def script_hashes(markup: str) -> list[str]:
+    """Return CSP ``'sha256-…'`` source tokens for every inline script in ``markup``.
+
+    Order-preserving and de-duplicated, so an artifact that inlines the same
+    snippet twice contributes one token.
+    """
+    tokens: list[str] = []
+    for match in _SCRIPT_RE.finditer(markup):
+        body = match.group(1)
+        if not body.strip():
+            continue
+        digest = base64.b64encode(hashlib.sha256(body.encode("utf-8")).digest()).decode()
+        token = f"'sha256-{digest}'"
+        if token not in tokens:
+            tokens.append(token)
+    return tokens
+
+
+def artifact_csp(hashes: Sequence[str]) -> str:
+    """Build the artifact CSP whose ``script-src`` admits exactly ``hashes``."""
+    script_src = " ".join(hashes) if hashes else "'none'"
+    return f"{_CSP_WITHOUT_SCRIPT_SRC}; script-src {script_src}"
+
+
+def authorize_injected_scripts(document: str, injected: str) -> str:
+    """Extend a built artifact's ``<meta>`` CSP to admit scripts in ``injected``.
+
+    Anything that splices a ``<script>`` into an already-built artifact (the
+    viewer's PDF-button upgrade and its print-reveal shim) must call this, or the
+    hash-pinned policy the artifact carries will refuse the addition. Artifacts
+    built before script hashing carry ``script-src 'unsafe-inline'`` and are
+    returned unchanged — their policy already admits the injection.
+    """
+    additions = script_hashes(injected)
+    if not additions:
+        return document
+
+    def _extend(match: re.Match) -> str:
+        policy = match.group(2)
+        directive = _SCRIPT_SRC_RE.search(policy)
+        # Only the script-src value decides this. Testing the whole policy for
+        # 'unsafe-inline' would always match — style-src legitimately carries it.
+        if directive is None or "'unsafe-inline'" in directive.group(1):
+            return match.group(0)
+        missing = [h for h in additions if h not in directive.group(1)]
+        if not missing:
+            return match.group(0)
+        extended = policy[: directive.end(1)] + " " + " ".join(missing) + policy[directive.end(1) :]
+        return match.group(1) + extended + match.group(3)
+
+    return _META_CSP_RE.sub(_extend, document, count=1)
+
 # Static/print flatten: neutralise CSS animations & transitions so a headless
 # PNG/PDF capture lands on the final frame instead of a blank/mid-animation one.
 # Injected only when a build requests static mode. Renderers must ALSO skip their
 # own JS-driven animation when RenderRequest.static is true (belt and braces).
+#
+# The same declarations ship unconditionally inside a prefers-reduced-motion
+# query (see REDUCED_MOTION_CSS): static mode is a build-time choice about
+# capture, while reduced motion is the reader's OS-level accessibility setting,
+# and an artifact built without --static was previously honouring neither.
 STATIC_FLATTEN_CSS = """
 *, *::before, *::after {
   animation-duration: 0s !important;
@@ -78,6 +172,36 @@ html { scroll-behavior: auto !important; }
 # Provenance is embedded in the WORKSPACE copy as an HTML comment between these
 # sentinels. It never renders. `bh-export` strips it (see strip_provenance) so it
 # does not ride out to a client.
+# The PDF button's behaviour lives here rather than in an inline ``onclick=``.
+# An event-handler attribute is NOT covered by a CSP script hash, so a single
+# onclick would pin ``script-src`` to ``'unsafe-inline'`` for the whole
+# document — see ARTIFACT_CONTENT_SECURITY_POLICY. Assigning ``.onclick``
+# (rather than addEventListener) keeps serve.py's PDF button upgrade a
+# replacement rather than a second handler firing alongside this one.
+PDF_BUTTON_JS = """
+(function() {
+  function wire() {
+    var button = document.querySelector('.brainhub-pdf-button');
+    if (!button) { return; }
+    button.onclick = function() {
+      if (location.protocol === 'file:') {
+        document.querySelectorAll('details').forEach(function(d) { d.open = true; });
+        window.print();
+        return;
+      }
+      var url = new URL(location.href);
+      url.searchParams.set('format', 'pdf');
+      location.assign(url);
+    };
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wire);
+  } else {
+    wire();
+  }
+})();
+"""
+
 PROVENANCE_START = "<!--brainhub:provenance"
 PROVENANCE_END = "brainhub:provenance:end-->"
 _PROVENANCE_RE = re.compile(
@@ -377,14 +501,16 @@ def render_header(title: str, *, white_label: bool = False) -> str:
         f"{logo}"
         f"{title_h1}"
         "</div>"
-        '<button type="button" class="brainhub-pdf-button" '
-        'onclick="if(location.protocol===&quot;file:&quot;){'
-        'document.querySelectorAll(&quot;details&quot;).forEach(function(d){d.open=true});window.print()}'
-        'else{var u=new URL(location.href);u.searchParams.set(&quot;format&quot;,&quot;pdf&quot;);location.assign(u)}">'
+        '<button type="button" class="brainhub-pdf-button">'
         "⬇ 下載 PDF"
         "</button>"
         "</header>"
     )
+
+
+REDUCED_MOTION_CSS = (
+    "@media (prefers-reduced-motion: reduce) {" + STATIC_FLATTEN_CSS + "}"
+)
 
 
 def flatten_style(static: bool) -> str:
@@ -392,6 +518,11 @@ def flatten_style(static: bool) -> str:
     if not static:
         return ""
     return f"<style data-brainhub-static>{STATIC_FLATTEN_CSS}</style>"
+
+
+def reduced_motion_style() -> str:
+    """Return the always-on ``<style>`` honouring the reader's motion setting."""
+    return f"<style data-brainhub-reduced-motion>{REDUCED_MOTION_CSS}</style>"
 
 
 def _provenance_block(provenance: dict | None) -> str:
@@ -437,6 +568,13 @@ def wrap_document(
     * ``static`` — inject :data:`STATIC_FLATTEN_CSS` for headless capture.
     * ``provenance`` — embed a strippable provenance comment (workspace copy).
 
+    The shell deliberately adds NO ``role``/``aria-*`` wrapper around ``body``.
+    A graphic's accessible name belongs to the graphic: ``report_chart`` already
+    emits ``<svg role="img">`` with ``<title>``/``<desc>``, and wrapping that in
+    an outer ``role="img"`` would make the subtree presentational and hide the
+    richer text it already carries. A renderer whose output lacks a name adds
+    one itself (see ``renderers/mermaid.py``).
+
     The result has zero external requests: base CSS + theme-init JS are inlined
     from ``web_assets``, the CSP meta blocks egress, and the favicon is a no-op
     ``data:`` URI so browsers do not probe ``/favicon.ico``. The aworkr brand
@@ -446,18 +584,24 @@ def wrap_document(
     """
     safe_title = html.escape(str(title))
     cls = f' class="{html.escape(body_class, quote=True)}"' if body_class else ""
-    return f"""<!DOCTYPE html>
+    # Assembled in two passes: the CSP has to name the sha256 of every script the
+    # finished document contains, and renderer scripts arrive in head_extra/body,
+    # so the policy can only be computed once the document exists. Pass 1 uses a
+    # placeholder that no policy syntax can collide with.
+    document = f"""<!DOCTYPE html>
 <html lang="zh-Hant-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="{ARTIFACT_CONTENT_SECURITY_POLICY}">
+<meta http-equiv="Content-Security-Policy" content="{_CSP_PLACEHOLDER}">
 <meta name="generator" content="brainhub">
 <title>{safe_title}</title>
 <link rel="icon" href="data:,">
 <script>{THEME_INIT_JS}</script>
+<script>{PDF_BUTTON_JS}</script>
 <style>{CSS}</style>
 <style>{BRAND_CSS}</style>
+{reduced_motion_style()}
 {flatten_style(static)}
 {head_extra}
 </head>
@@ -468,3 +612,7 @@ def wrap_document(
 </main>
 </body>
 </html>"""
+    # Pass 2: pin every script the document actually ended up carrying. The
+    # placeholder is replaced, never the policy of a nested document — it appears
+    # exactly once and nothing else in the artifact can contain it.
+    return document.replace(_CSP_PLACEHOLDER, artifact_csp(script_hashes(document)), 1)
