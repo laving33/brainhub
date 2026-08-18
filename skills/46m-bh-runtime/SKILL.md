@@ -88,8 +88,18 @@ The registry holds 13 kinds; the four this table leaves out are deliberate, not
 missing. `donut` and `gauge` are registered and supported but cautioned — a
 part-to-whole reads better as `stacked-bar` and a single ratio as a linear
 meter, so reach for them only when a house report format demands the shape.
-`line-chart` and `bar-chart` are the legacy spec shape kept for older callers;
-new work uses `line` and `bar`.
+`line-chart` and `bar-chart` are NOT redundant with `line` and `bar` — the
+names suggest they are, and the spec shapes are what actually differ:
+
+| Reach for | When |
+|---|---|
+| `line` | the x axis is evenly spaced categories (`values` align to `x_labels` by index). Direct-labels each series at its endpoint; no legend box. |
+| `line-chart` | the x axis is numeric and possibly irregular (`points` are `[x, y]` pairs, scaled to a real axis with computed ticks). |
+| `bar` | one measure, ranked, one hue — a compact horizontal list. |
+| `bar-chart` | several series per category, grouped, in categorical colours. |
+
+Picking `line` when the x values are irregular silently evenly-spaces them,
+which misstates the data.
 
 `mermaid` covers 22 offline-verified diagram types (flowchart, sequence,
 class, state, gantt, pie, ER, journey, quadrant, timeline, mindmap, gitGraph,
