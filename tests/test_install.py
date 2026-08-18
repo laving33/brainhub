@@ -58,15 +58,35 @@ class VersionGuardTests(unittest.TestCase):
     def test_guard_itself_parses_on_python_3_7(self):
         ast.parse(GUARD.read_text(encoding="utf-8"), feature_version=(3, 7))
 
-    def test_guard_minimum_matches_the_installer(self):
+    def test_guard_minimum_matches_what_the_installer_provisions(self):
         minimum = re.search(r"^MINIMUM = \((\d+), (\d+)\)", GUARD.read_text(encoding="utf-8"), re.M)
         self.assertIsNotNone(minimum)
         guard_version = f"{minimum.group(1)}.{minimum.group(2)}"
-        declared = re.search(
-            r'^MINIMUM_PYTHON="([^"]+)"', INSTALL.read_text(encoding="utf-8"), re.M
+        pinned = re.search(
+            r'^PINNED_PYTHON="([^"]+)"', INSTALL.read_text(encoding="utf-8"), re.M
         )
-        self.assertIsNotNone(declared, "install.sh declares no MINIMUM_PYTHON")
-        self.assertEqual(declared.group(1), guard_version)
+        self.assertIsNotNone(pinned, "install.sh declares no PINNED_PYTHON")
+        self.assertEqual(pinned.group(1), guard_version)
+
+    def test_lockfile_and_packaging_agree_on_the_floor(self):
+        # uv.lock's requires-python is rewritten silently by `uv run --python X`;
+        # nothing else compares it to what the package declares.
+        lock = re.search(
+            r'^requires-python = ">=([\d.]+)"', (ROOT / "uv.lock").read_text(encoding="utf-8"), re.M
+        )
+        pyproject = re.search(
+            r'requires-python\s*=\s*">=([\d.]+)',
+            (ROOT / "mcp_package" / "pyproject.toml").read_text(encoding="utf-8"),
+        )
+        self.assertIsNotNone(lock, "uv.lock declares no requires-python")
+        self.assertEqual(lock.group(1), pyproject.group(1))
+
+    def test_installer_requires_uv_rather_than_falling_back(self):
+        # A system-python fallback means every line here must keep working on
+        # whatever the oldest supported distribution ships.
+        source = INSTALL.read_text(encoding="utf-8")
+        self.assertNotIn("--system-python", source.split("# Usage:")[1])
+        self.assertIn("astral.sh/uv/install.sh", source)
 
     def test_guard_minimum_matches_the_packaging_metadata(self):
         pyproject = (ROOT / "mcp_package" / "pyproject.toml").read_text(encoding="utf-8")

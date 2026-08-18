@@ -1,6 +1,7 @@
 ---
 name: 46m-bh-retrieve
 description: Retrieves compact BrainHub context through the CLI without loading the whole wiki or needing MCP. Use before answering work that may depend on user memory, project history, source-backed notes, or prior decisions.
+allowed-tools: Bash(bh:*), Read
 ---
 
 # BrainHub Retrieve

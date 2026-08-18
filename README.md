@@ -27,10 +27,10 @@ external services.
 
 ## Requirements
 
-- Python 3.10+. `./install.sh` provisions its own 3.12 when [uv][uv] is
-  available, so the distro's Python stops deciding this; without uv it uses
-  `python3` and refuses anything older than 3.10 with a message rather than an
-  ImportError.
+- [uv][uv]. `./install.sh` uses it to provision Python 3.12, so the
+  distribution's Python never decides anything. There is no system-python
+  path: supporting one taxes every future change with whatever the oldest
+  supported distribution ships.
 - Optional: Chrome/Chromium for server-side PDF export — found on PATH
   automatically; override with `BRAINHUB_CHROME_PDF` (see White-label &
   configuration)
@@ -51,11 +51,10 @@ cd brainhub
 ./install.sh          # creates the environment and the `bh` command
 ```
 
-With [uv][uv] present, `install.sh` provisions its own Python 3.12, so what the
-distribution happens to ship stops mattering — Ubuntu 22.04's 3.10 and 24.04's
-3.12 behave identically. Without uv it uses the system `python3` and requires
-3.10 or newer. `--system-python` forces the second path, `--venv` and
-`--bin-dir` relocate what it writes.
+`install.sh` provisions Python 3.12 through uv, so what the distribution ships
+never matters — Ubuntu 22.04 and 24.04 behave identically. `--python` pins a
+different version, `--venv` and `--bin-dir` relocate what it writes. Without
+uv it stops and prints the one line that installs it.
 
 ## Quickstart
 
@@ -255,9 +254,8 @@ python3 scripts/check_runtime_duplication.py
 
 CI (`.github/workflows/ci.yml`) runs the first, second and fourth of those on
 Python 3.10 and 3.12, and every gate runs even after an earlier one fails, so
-one push reports every problem rather than one per round trip. 3.10 is there
-because it is the floor `install.sh` accepts on the system-Python path, and
-nothing else exercises it — the dev environment is 3.12.
+one push reports every problem rather than one per round trip. 3.12 is what
+`install.sh` provisions; 3.13 is there to see a break coming.
 
 Prose that restates a fact the code owns is checked, not trusted: the renderer
 list, the verified mermaid diagram list, the version string across five files,

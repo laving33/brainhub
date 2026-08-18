@@ -1,6 +1,7 @@
 ---
 name: 46m-bh-memory
 description: Manages the BrainHub durable-memory lifecycle through the CLI — remember, recall, review, update, archive, restore, forget, explain — without needing MCP. Use after important user-approved decisions, when durable context should be proposed or reviewed, and for explicit memory-lifecycle requests.
+allowed-tools: Bash(bh:*), Read
 ---
 
 # BrainHub Memory

@@ -1,6 +1,7 @@
 ---
 name: 46m-bh-ingest
 description: Refreshes source-backed BrainHub wiki pages from raw files, proposes memories, and validates the updates through the CLI, without needing MCP. Use when raw files are present, source pages look stale, or the user asks to ingest notes into BrainHub.
+allowed-tools: Bash(bh:*), Read
 ---
 
 # BrainHub Ingest

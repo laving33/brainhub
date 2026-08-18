@@ -26,10 +26,10 @@ jobs:
       # on 3.10" is exactly the result worth seeing in full.
       fail-fast: false
       matrix:
-        # 3.10 is the floor mcp_package/pyproject.toml claims, and uv.lock pins
-        # the dev environment to >=3.12 — so until this matrix existed the floor
-        # was never run, and it was in fact broken (`datetime.UTC` is 3.11+).
-        python-version: ["3.10", "3.12"]
+        # install.sh provisions 3.12 and there is no system-python path, so 3.12
+        # is the only version anything runs on. 3.13 is here to catch a break
+        # before it reaches the pinned version, not because we support it.
+        python-version: ["3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4

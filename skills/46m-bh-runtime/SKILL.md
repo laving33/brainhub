@@ -1,6 +1,7 @@
 ---
 name: 46m-bh-runtime
 description: Creates, catalogs, and promotes Runtime Node-local workflow artifacts in BrainHub — charts, diagrams, interactive HTML, exports — keeping provenance local and access bounded to the CLI or MCP. Use before building an artifact, cataloging one, or promoting its conclusions into the wiki.
+allowed-tools: Bash(bh:*), Bash(python3 brainhub.py:*), Bash(python3 serve.py:*), Read
 ---
 
 # BrainHub Runtime

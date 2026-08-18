@@ -29,11 +29,20 @@ guide, and against Claude Code's Skills documentation.
 
 ### Added — `install.sh`
 
-- **The installer provisions its own Python.** With uv present it installs and
-  pins 3.12, so what the distribution ships stops deciding which syntax this
-  codebase may use — Ubuntu 22.04's 3.10 and 24.04's 3.12 now behave the same.
-  Without uv it uses the system `python3` and refuses anything below 3.10 with
-  a sentence naming the problem and the fix.
+- **The installer provisions its own Python 3.12 through uv**, so what the
+  distribution ships stops deciding which syntax this codebase may use —
+  Ubuntu 22.04's 3.10 and 24.04's 3.12 now behave identically. There is no
+  system-python fallback by choice: supporting one taxes every future change
+  with whatever the oldest supported distribution happens to ship. Without uv
+  the installer stops and prints the one line that installs it.
+- **The supported floor is now 3.12** in all four places that declare it
+  (`_python_check.py`, `mcp_package/pyproject.toml`, `uv.lock`, ruff's
+  `target-version`), and a test compares the lockfile against the packaging
+  metadata — `uv run --python X` rewrites `uv.lock`'s `requires-python`
+  silently, and nothing else noticed.
+- **Skills carry fine-grained `allowed-tools`**, so BrainHub's own commands run
+  without a prompt each time while the grant stays scoped to those commands
+  rather than to Bash at large.
 - `_python_check.py` runs before any other import in all three entry points and
   is written in 3.7-compatible syntax on purpose: a guard that only parses on
   the versions it exists to reject never executes. Previously a `datetime.UTC`

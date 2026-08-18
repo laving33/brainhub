@@ -1,95 +1,71 @@
 #!/usr/bin/env bash
 # Install the `bh` command.
 #
-# Two ways to get an interpreter, in order of preference:
+# uv provisions the interpreter. That is the whole point: the distribution's
+# Python otherwise decides what syntax this codebase may use — Ubuntu 22.04
+# ships 3.10, 24.04 ships 3.12 — and writing for the oldest of them is how a
+# `datetime.UTC` import once made every command fail on 22.04. Pinning our own
+# removes the question. Needs network on first install only.
 #
-#   1. uv provisions one. The distro's Python then stops deciding what syntax
-#      this codebase may use — Ubuntu 22.04 ships 3.10, 24.04 ships 3.12, and
-#      writing for the oldest of them is how a `datetime.UTC` import once made
-#      every command fail on 22.04. Needs network on first install only.
-#   2. The system python3, if it is new enough. Nothing to download, and the
-#      version check below fails with a sentence rather than an ImportError
-#      from inside the stdlib.
+# There is deliberately no system-python fallback. Supporting one means every
+# line of this codebase must keep working on whatever the oldest supported
+# distribution ships, which is a permanent tax paid by every future change.
 #
-# A dedicated virtualenv is created either way. Every entry point — brainhub.py,
-# brainhub_engine.py and serve.py — imports markdown-it-py through
+# A dedicated virtualenv holds the dependencies. Every entry point —
+# brainhub.py, brainhub_engine.py and serve.py — imports markdown-it-py through
 # brainhub_core.markdown, so none of them runs on a bare interpreter. (The
 # README claimed otherwise for a long time; running the CLI on a clean
 # interpreter is what showed it.) The env is BrainHub's own, never the system
 # site-packages.
 #
-# Usage: ./install.sh [--system-python] [--bin-dir DIR] [--venv DIR]
+# Usage: ./install.sh [--bin-dir DIR] [--venv DIR] [--python VERSION]
 set -euo pipefail
 
-PINNED_PYTHON="3.12"   # what the uv path provisions
-MINIMUM_PYTHON="3.10"  # what the system path accepts; keep in sync with _python_check.py
+PINNED_PYTHON="3.12"   # keep in sync with _python_check.py's MINIMUM
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="${HOME}/.local/bin"
 VENV_DIR="${HOME}/.local/share/brainhub/venv"
-FORCE_SYSTEM=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --system-python) FORCE_SYSTEM=1; shift ;;
     --bin-dir) BIN_DIR="$2"; shift 2 ;;
     --venv) VENV_DIR="$2"; shift 2 ;;
-    -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --python) PINNED_PYTHON="$2"; shift 2 ;;
+    -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
 done
 
-# Resolve the interpreter to bake into the wrapper.
-PYTHON=""
-if [ "$FORCE_SYSTEM" -eq 0 ] && command -v uv >/dev/null 2>&1; then
-  echo "==> uv found; provisioning Python ${PINNED_PYTHON}"
-  uv python install "$PINNED_PYTHON" >&2
-  # Resolved from a neutral directory, with VIRTUAL_ENV cleared. `uv python
-  # find` prefers a .venv discovered from the working directory — and
-  # --no-project does not stop it, because that flag only suppresses reading
-  # pyproject.toml. Run inside a checkout it therefore returns the DEVELOPMENT
-  # virtualenv, and baking that into the wrapper points the installed command
-  # at a directory that gets deleted and rebuilt.
-  PYTHON="$(cd / && env -u VIRTUAL_ENV uv python find --managed-python --no-project "$PINNED_PYTHON")"
-else
-  if [ "$FORCE_SYSTEM" -eq 0 ]; then
-    echo "==> uv not found; falling back to the system python3" >&2
-    echo "    (install uv for a pinned interpreter: curl -LsSf https://astral.sh/uv/install.sh | sh)" >&2
-  fi
-  PYTHON="$(command -v python3 || true)"
-  if [ -z "$PYTHON" ]; then
-    echo "no python3 on PATH, and no uv to provision one" >&2
-    exit 1
-  fi
-fi
-
-# Verify before writing a wrapper: a version failure discovered here names the
-# problem, whereas one discovered on first run surfaces as an import error deep
-# in the stdlib.
-if ! "$PYTHON" -c "import sys; raise SystemExit(0 if sys.version_info >= tuple(int(p) for p in '${MINIMUM_PYTHON}'.split('.')) else 1)"; then
-  RUNNING="$("$PYTHON" -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')"
-  cat >&2 <<EOF
-${PYTHON} is Python ${RUNNING}; BrainHub needs ${MINIMUM_PYTHON} or newer.
-
-Install uv and re-run, which provisions ${PINNED_PYTHON} without touching the
-system Python or needing root:
+# uv is required. Failing here with the install line beats failing later with
+# a version error the reader has to diagnose.
+if ! command -v uv >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+BrainHub's installer needs uv, which provisions its own Python without root
+and without touching the system one:
 
   curl -LsSf https://astral.sh/uv/install.sh | sh
-  ./install.sh
+
+then re-run ./install.sh
 EOF
   exit 1
 fi
+
+echo "==> provisioning Python ${PINNED_PYTHON}"
+uv python install "$PINNED_PYTHON" >&2
+# Resolved from a neutral directory, with VIRTUAL_ENV cleared. `uv python find`
+# prefers a .venv discovered from the working directory — and --no-project does
+# not stop it, because that flag only suppresses reading pyproject.toml. Run
+# inside a checkout it therefore returns the DEVELOPMENT virtualenv, and baking
+# that into the wrapper points the installed command at a directory that gets
+# deleted and rebuilt.
+PYTHON="$(cd / && env -u VIRTUAL_ENV uv python find --managed-python --no-project "$PINNED_PYTHON")"
 
 # Dedicated environment, so BrainHub's dependencies never touch system
 # site-packages and an OS upgrade cannot take them away.
 echo "==> creating environment: $VENV_DIR"
 rm -rf "$VENV_DIR"
-if command -v uv >/dev/null 2>&1; then
-  uv venv --python "$PYTHON" "$VENV_DIR" >&2
-  VIRTUAL_ENV="$VENV_DIR" uv pip install --quiet "$ROOT/mcp_package" >&2
-else
-  "$PYTHON" -m venv "$VENV_DIR"
-  "$VENV_DIR/bin/python" -m pip install --quiet --disable-pip-version-check "$ROOT/mcp_package" >&2
-fi
+uv venv --python "$PYTHON" "$VENV_DIR" >&2
+VIRTUAL_ENV="$VENV_DIR" uv pip install --quiet "$ROOT/mcp_package" >&2
 VENV_PYTHON="$VENV_DIR/bin/python"
 
 # Confirm it actually runs this tree. Checking the version number alone is what

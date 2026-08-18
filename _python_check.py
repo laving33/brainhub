@@ -7,12 +7,13 @@ only parses on the versions it is meant to reject never runs. `datetime.UTC`
 every command — including `bh --help` — died with an ImportError naming a
 stdlib module, which reads like a broken install rather than a version floor.
 
-The floor is the system-Python case. `install.sh` prefers a uv-provisioned
-interpreter precisely so the distro's version stops deciding this.
+The floor tracks what `install.sh` provisions. There is no system-Python
+path, so nothing older has to be accommodated — but a user can still point a
+wrapper at any interpreter by hand, and this is what tells them why it failed.
 """
 import sys
 
-MINIMUM = (3, 10)
+MINIMUM = (3, 12)
 
 
 def require_supported_python():
@@ -24,11 +25,9 @@ def require_supported_python():
         "BrainHub needs Python {wanted} or newer; this is {running}\n"
         "  ({executable})\n"
         "\n"
-        "Either install BrainHub's own interpreter (no root, no system change):\n"
+        "Install BrainHub's own interpreter (no root, no system change):\n"
         "  curl -LsSf https://astral.sh/uv/install.sh | sh\n"
-        "  ./install.sh\n"
-        "\n"
-        "or point the command at a newer python3 you already have.\n".format(
+        "  ./install.sh\n".format(
             wanted=wanted,
             running=running,
             executable=sys.executable,
