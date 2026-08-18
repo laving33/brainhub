@@ -139,10 +139,12 @@ For Claude Code, that is `.mcp.json` (project) or `~/.claude.json` (personal):
   "args": ["--wiki", "/home/you/team-brain/wiki"]}}}
 ```
 
-The server speaks stdio and negotiates protocol revision `2025-11-25`. It works
-with SDK 1.x and 2.x — `mcp` 2.0 renamed `FastMCP` to `MCPServer`, and both are
-accepted. `tests/test_mcp_client_compat.py` drives a real session and holds the
-tool definitions to the limits clients impose (2 KB descriptions, no
+The server speaks stdio and serves both protocol eras: a client that opens with
+`server/discover` gets the stateless `2026-07-28` revision, one that opens with
+`initialize` gets `2025-11-25`. It works with SDK 1.x and 2.x — `mcp` 2.0
+renamed `FastMCP` to `MCPServer`, and both are accepted.
+`tests/test_mcp_client_compat.py` drives real sessions over both eras and holds
+the tool definitions to the limits clients impose (2 KB descriptions, no
 root-level schema combinator).
 
 **Claude Code skills:** copy or symlink the directories under `skills/` into

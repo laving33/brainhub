@@ -109,6 +109,69 @@ class ToolDefinitionLimitsTests(unittest.TestCase):
         )
 
 
+class StatelessProtocolTests(unittest.TestCase):
+    """The 2026-07-28 revision, exercised over a real stdio subprocess.
+
+    Both eras are served, and the client picks: opening with `server/discover`
+    gets the stateless protocol, opening with `initialize` gets the handshake
+    one. All of this comes from the SDK — no protocol code of ours is involved —
+    which is exactly why it is worth a test: an SDK bump could remove it, and
+    nothing else here would notice.
+    """
+
+    @staticmethod
+    def _session(coro):
+        import asyncio
+
+        from mcp.client.session import ClientSession
+        from mcp.client.stdio import StdioServerParameters, stdio_client
+
+        async def run():
+            with tempfile.TemporaryDirectory() as td:
+                wiki = Path(td) / "wiki"
+                wiki.mkdir()
+                params = StdioServerParameters(
+                    command=sys.executable,
+                    args=[str(SERVER), "--wiki", str(wiki), "--surface", "slim"],
+                )
+                async with stdio_client(params) as (read, write):
+                    async with ClientSession(read, write) as session:
+                        return await coro(session)
+
+        return asyncio.run(run())
+
+    def test_discover_advertises_the_stateless_revision(self):
+        result = self._session(lambda s: s.discover())
+        self.assertIn("2026-07-28", result.supported_versions)
+        self.assertEqual(result.result_type, "complete")
+
+    def test_results_carry_the_revision_s_required_fields(self):
+        async def listing(session):
+            await session.discover()
+            return await session.list_tools()
+
+        result = self._session(listing)
+        # resultType is required on every result; ttlMs/cacheScope are required
+        # on tools/list via CacheableResult.
+        self.assertEqual(result.result_type, "complete")
+        self.assertIsNotNone(result.ttl_ms)
+        self.assertIn(result.cache_scope, ("public", "private"))
+        self.assertTrue(result.tools)
+
+    def test_a_stateless_connection_refuses_the_old_handshake(self):
+        async def both(session):
+            await session.discover()
+            try:
+                await session.initialize()
+                return None
+            except Exception as exc:  # MCPError
+                return str(exc)
+
+        message = self._session(both)
+        self.assertIsNotNone(message, "initialize should be refused after discover")
+        self.assertIn("2026-07-28", message)
+
+
 class HandshakeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

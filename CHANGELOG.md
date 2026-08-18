@@ -47,13 +47,17 @@
   is now stewarded by the Agentic AI Foundation under the Linux Foundation,
   donated by Anthropic in December 2025) and Claude Code's documented client
   limits.
-- The installed SDK advertises `2026-07-28` as its latest, but the high-level
-  server still answers the `initialize` handshake and negotiates `2025-11-25`.
-  The 2026-07-28 revision is a stateless redesign — it removes the handshake,
-  requires a `server/discover` RPC, and adds `resultType`/`ttlMs`/`cacheScope`
-  to results. Our server implements none of that yet; it is the SDK's
-  high-level surface that decides, and clients probe for the older era. Worth
-  revisiting when the SDK's stateless path is available.
+- **The server already serves `2026-07-28`, and also the handshake era.** Which
+  one a session uses is the client's choice, not ours: a client that opens with
+  `server/discover` gets the stateless protocol, one that opens with
+  `initialize` gets `2025-11-25`, and each connection then refuses the other
+  era's opening move. Verified over real stdio — `server/discover` returns
+  `supported_versions: ["2026-07-28"]`, and every result carries the revision's
+  new `resultType`, `ttlMs`/`cacheScope` and `_meta` serverInfo. All of it comes
+  from the SDK; no protocol code of ours was involved.
+- Nothing here uses a feature the revision deprecates (Roots, Sampling,
+  Logging). Server logging already goes to stderr, which is the migration the
+  spec recommends.
 - stdio remains a supported, recommended transport. HTTP+SSE is deprecated in
   favour of Streamable HTTP; we do not use either.
 
