@@ -1,6 +1,6 @@
 ---
 name: 46m-bh-memory
-description: Use after important user-approved decisions, when durable context should be proposed or reviewed, and for explicit BrainHub memory lifecycle work: remember, recall, review, update, archive, restore, forget, or explain local memories through the CLI without requiring MCP.
+description: Manages the BrainHub durable-memory lifecycle through the CLI — remember, recall, review, update, archive, restore, forget, explain — without needing MCP. Use after important user-approved decisions, when durable context should be proposed or reviewed, and for explicit memory-lifecycle requests.
 ---
 
 # BrainHub Memory

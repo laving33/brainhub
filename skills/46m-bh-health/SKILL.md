@@ -1,6 +1,6 @@
 ---
 name: 46m-bh-health
-description: Use at the start of BrainHub work when readiness is unclear, after installs or upgrades, and before repairs; verify health, inspect interrupted writes, back up, and repair generated indexes without MCP.
+description: Checks a BrainHub workspace's health, inspects interrupted writes, takes backups, and repairs generated indexes through the CLI, without needing MCP. Use at the start of BrainHub work when readiness is unclear, after installs or upgrades, and before repairs.
 ---
 
 # BrainHub Health

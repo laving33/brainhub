@@ -6,6 +6,7 @@ docstring, and the symptom is silent: a truncated description or a dropped tool,
 with the server still reporting success.
 """
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -170,6 +171,50 @@ class StatelessProtocolTests(unittest.TestCase):
         message = self._session(both)
         self.assertIsNotNone(message, "initialize should be refused after discover")
         self.assertIn("2026-07-28", message)
+
+
+class DiscoverabilityTests(unittest.TestCase):
+    """Can an agent find out that BrainHub draws charts?
+
+    Three routes carry that fact: the server instructions injected on connect,
+    the tool descriptions in tools/list, and the runtime skill's description.
+    The instructions named recall, remember, ingest, review and admin and said
+    nothing about drawing, so a model asked for "a chart of these numbers" had
+    no reason to look — the capability was reachable only by reading the whole
+    tool list closely.
+    """
+
+    # Words a user actually says, as opposed to "artifact" or "renderer".
+    TRIGGERS = ("chart", "diagram")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.init, cls.tools = _tools()
+
+    def test_server_instructions_advertise_drawing(self):
+        instructions = self.init.get("instructions") or ""
+        self.assertIn("bh_build", instructions)
+        for trigger in self.TRIGGERS:
+            self.assertIn(trigger, instructions.lower())
+
+    def test_server_instructions_fit_the_client_cap(self):
+        # Claude Code truncates server instructions at 2 KB.
+        instructions = self.init.get("instructions") or ""
+        self.assertLessEqual(len((instructions).encode("utf-8")), 2048)
+
+    def test_build_tool_description_uses_words_a_user_would_say(self):
+        build = next(t for t in self.tools if t["name"] == "bh_build")
+        description = (build.get("description") or "").lower()
+        for trigger in self.TRIGGERS:
+            self.assertIn(trigger, description)
+
+    def test_runtime_skill_description_uses_words_a_user_would_say(self):
+        skill = ROOT / "skills" / "46m-bh-runtime" / "SKILL.md"
+        description = re.search(
+            r"^description:\s*(.+)$", skill.read_text(encoding="utf-8"), re.M
+        ).group(1).lower()
+        for trigger in self.TRIGGERS:
+            self.assertIn(trigger, description)
 
 
 class HandshakeTests(unittest.TestCase):

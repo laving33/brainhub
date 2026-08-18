@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### Fixed — discoverability and the Skill contract
+
+Audited against Anthropic's published Agent Skills specification and authoring
+guide, and against Claude Code's Skills documentation.
+
+- **Nothing told an agent that BrainHub can draw.** Of the routes that carry
+  that fact, only the `bh_build` tool description did. The server instructions
+  injected on connect named recall, remember, ingest, review and admin and said
+  nothing about charts, so a model asked for "a chart of these numbers" had no
+  reason to look; `bh --help` described `build` as "render a spec into a
+  self-contained HTML artifact", which uses none of the words a person says.
+  Both now name the thing: chart, diagram, bar, line, heatmap, funnel, mermaid.
+- **Every skill description stated only when to use it, never what it does.**
+  The guide asks for both, because the description is what a model matches a
+  task against out of a hundred skills. All five now lead with the capability.
+- **MCP tool names in the runtime skill were unqualified** (`admin(...)`,
+  `bh_build(...)`). The guide requires `ServerName:tool_name`, or the name may
+  not resolve when several MCP servers are connected — and the failure looks
+  like a missing tool rather than a naming problem.
+- `tests/test_skills_contract.py` holds all five skills to the specification's
+  frontmatter limits (name ≤64 chars and lowercase-kebab with no reserved word,
+  description ≤1,024 chars, no XML) and to the guide's recommendations (body
+  under 500 lines, third person, no time-sensitive content, one-level-deep
+  references that resolve, server-qualified tool names).
+
 ### Added — `install.sh`
 
 - **The installer provisions its own Python.** With uv present it installs and

@@ -177,8 +177,16 @@ def _instructions(surface: str, memory_enabled: bool = True) -> str:
             "maintenance such as backup, migrate, validate, artifact catalogs, rebuild, pages, "
             "backlinks, graph export, project seeding, captures, and advanced updates. "
             "If recall returns no useful project context and you are in a repo, "
-            "use admin(action='seed_project') before broad file reads. Never "
-            "silently save durable memory; propose or review first when unsure."
+            "use admin(action='seed_project') before broad file reads. "
+            # Without this sentence the artifact side of BrainHub was
+            # undiscoverable from the instructions: they named recall, remember,
+            # ingest, review and admin, and nothing said the server can draw. A
+            # model asked for "a chart of these numbers" had no reason to look.
+            "Use bh_build to draw a chart or diagram — bar, line, stacked-bar, "
+            "heatmap, scatter, funnel, KPI tiles, donut, gauge, or a mermaid "
+            "flowchart/sequence/gantt — as one self-contained HTML file with no "
+            "external requests; bh_export writes a client-facing copy. "
+            "Never silently save durable memory; propose or review first when unsure."
         )
     return (
         "BrainHub is local personal memory for agents. This full MCP surface is "

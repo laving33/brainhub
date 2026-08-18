@@ -567,7 +567,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     build_command = subparsers.add_parser(
         "build",
-        help="render a spec into a self-contained HTML artifact (bh-build)",
+        help=(
+            "draw a chart or diagram as one self-contained HTML file "
+            "(bar/line/heatmap/funnel/mermaid/…)"
+        ),
     )
     build_command.add_argument("spec", type=Path, help="path to a JSON render spec, or '-' for stdin")
     build_command.add_argument("workspace", nargs="?", type=Path, default=default_workspace())

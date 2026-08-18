@@ -1,6 +1,6 @@
 ---
 name: 46m-bh-runtime
-description: Use before creating, cataloging, reviewing, or promoting Runtime Node-local workflow artifacts in BrainHub; keep provenance local and use bounded CLI or MCP access.
+description: Creates, catalogs, and promotes Runtime Node-local workflow artifacts in BrainHub — charts, diagrams, interactive HTML, exports — keeping provenance local and access bounded to the CLI or MCP. Use before building an artifact, cataloging one, or promoting its conclusions into the wiki.
 ---
 
 # BrainHub Runtime
@@ -53,12 +53,16 @@ cross-VPS sync mechanism.
    Do not treat a catalog record as source-backed knowledge by itself; read or
    verify the referenced artifact before compiling a wiki page.
 5. For MCP-configured agents, point the existing local stdio server at
-   `[workspace]/wiki`. Prefer the slim surface:
+   `[workspace]/wiki`. Prefer the slim surface, and name tools with their
+   server prefix — an unqualified name may not resolve when several MCP
+   servers are connected:
    ```text
-   admin(action="artifacts", arguments='{"kind":"report"}')
+   46m-bh:admin(action="artifacts", arguments='{"kind":"report"}')
    ```
-   The full compatibility surface also offers `list_artifacts(kind="report")`.
+   The full compatibility surface also offers `46m-bh:list_artifacts(kind="report")`.
    Both return metadata only; they do not transfer, render, or execute files.
+   (`46m-bh` is the server key in the agent's MCP config; substitute yours if
+   you registered it under a different name.)
 6. The optional human viewer remains loopback-only:
    ```bash
    python3 serve.py --root [workspace]
@@ -68,7 +72,7 @@ cross-VPS sync mechanism.
 7. Promote deliberately: artifacts first, then create or update source-backed
    wiki pages, and propose durable memory only after explicit user approval.
 
-## Building charts and diagrams (`bh build` / `bh_build`)
+## Building charts and diagrams (`bh build` / `46m-bh:bh_build`)
 
 Pick the renderer by the data's job, not by familiarity:
 
@@ -123,7 +127,7 @@ example for the kind you picked rather than reasoning by analogy:
 | `mermaid` | `{"diagram": "graph TD; 需求-->設計;"}` |
 | `interactive-html` | `{"sections": [{"heading": "摘要", "body": "<p>內文</p>"}]}` |
 
-`title` is accepted by every kind, but prefer `--title` / `bh_build(title=…)`:
+`title` is accepted by every kind, but prefer `--title` / `46m-bh:bh_build(title=…)`:
 it names the document AND the chart, and it wins over the spec's.
 
 Each is the renderer's registered `example`, so this table cannot drift from

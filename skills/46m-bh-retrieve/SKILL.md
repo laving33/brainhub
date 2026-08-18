@@ -1,6 +1,6 @@
 ---
 name: 46m-bh-retrieve
-description: Use before answering work that may depend on user memory, project history, source-backed notes, or prior decisions; retrieve compact BrainHub context through the CLI without loading the whole wiki or requiring MCP.
+description: Retrieves compact BrainHub context through the CLI without loading the whole wiki or needing MCP. Use before answering work that may depend on user memory, project history, source-backed notes, or prior decisions.
 ---
 
 # BrainHub Retrieve
