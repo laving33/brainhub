@@ -12,7 +12,7 @@ from brainhub_core.log import DEFAULT_LOG_TEXT, append_log, read_log_entries, ve
 
 class LogCoreTests(unittest.TestCase):
     def test_append_log_rotates_unbounded_operation_log(self):
-        root = Path(tempfile.mkdtemp(prefix="link-log-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-log-core-")))
         wiki_dir = root / "wiki"
         wiki_dir.mkdir(parents=True)
         log_path = wiki_dir / "log.md"
@@ -37,7 +37,7 @@ class LogCoreTests(unittest.TestCase):
         self.assertIn("older entry", (wiki_dir / "log.md.1").read_text(encoding="utf-8"))
 
     def test_read_log_entries_parses_structured_log(self):
-        root = Path(tempfile.mkdtemp(prefix="link-log-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-log-core-")))
         wiki_dir = root / "wiki"
         wiki_dir.mkdir(parents=True)
 
@@ -57,7 +57,7 @@ class LogCoreTests(unittest.TestCase):
         self.assertIn("entry_hash", entries[-1])
 
     def test_verify_log_integrity_detects_tampered_entries(self):
-        root = Path(tempfile.mkdtemp(prefix="link-log-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-log-core-")))
         wiki_dir = root / "wiki"
         wiki_dir.mkdir(parents=True)
 

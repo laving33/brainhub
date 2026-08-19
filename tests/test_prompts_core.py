@@ -18,7 +18,7 @@ class PromptsCoreTests(unittest.TestCase):
         return wiki
 
     def test_global_wiki_gets_personal_memory_prompts(self):
-        root = Path(tempfile.mkdtemp(prefix="link-prompts-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-prompts-core-")))
         wiki = self.make_wiki(root)
 
         payload = starter_prompt_payload(wiki)
@@ -35,7 +35,7 @@ class PromptsCoreTests(unittest.TestCase):
         self.assertTrue(any(str(root.resolve()) in command for command in payload["commands"]))
 
     def test_git_project_gets_project_memory_prompts(self):
-        root = Path(tempfile.mkdtemp(prefix="link-prompts-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-prompts-core-")))
         project = root / "Client Launch"
         (project / ".git").mkdir(parents=True)
         wiki = self.make_wiki(project)
@@ -48,7 +48,7 @@ class PromptsCoreTests(unittest.TestCase):
         self.assertIn("BrainHub 記得這個專案的什麼？", prompts)
 
     def test_explicit_project_is_normalized(self):
-        root = Path(tempfile.mkdtemp(prefix="link-prompts-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-prompts-core-")))
         wiki = self.make_wiki(root)
 
         payload = starter_prompt_payload(wiki, project="Client Launch")
@@ -56,7 +56,7 @@ class PromptsCoreTests(unittest.TestCase):
         self.assertEqual(payload["project"], "client-launch")
 
     def test_welcome_payload_returns_short_proof_path(self):
-        root = Path(tempfile.mkdtemp(prefix="link-prompts-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-prompts-core-")))
         wiki = self.make_wiki(root)
 
         payload = welcome_payload(wiki, project="Client Launch")

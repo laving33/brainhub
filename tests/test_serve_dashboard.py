@@ -56,7 +56,7 @@ def _iso(delta: timedelta) -> str:
 
 class DashboardPageTests(unittest.TestCase):
     def make_workspace(self) -> Path:
-        tmp = Path(tempfile.mkdtemp(prefix="dashboard-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="dashboard-test-")))
         wiki = tmp / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")

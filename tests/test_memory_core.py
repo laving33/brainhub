@@ -38,7 +38,7 @@ from brainhub_core.operations import pending_operations  # noqa: E402
 
 class MemoryCoreTests(unittest.TestCase):
     def test_default_project_for_target_uses_git_root_name(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-project-")) / "Link Product"
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-project-"))) / "Link Product"
         wiki = root / "wiki"
         wiki.mkdir(parents=True)
         (root / ".git").mkdir()
@@ -46,10 +46,10 @@ class MemoryCoreTests(unittest.TestCase):
 
         self.assertEqual(default_project_for_target(root), "link-product")
         self.assertEqual(default_project_for_target(wiki), "link-product")
-        self.assertEqual(default_project_for_target(Path(tempfile.mkdtemp(prefix="link-no-project-"))), "")
+        self.assertEqual(default_project_for_target(Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-no-project-")))), "")
 
     def test_memory_records_profile_and_recall(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-core-")))
         wiki = root / "wiki"
         memories = wiki / "memories"
         memories.mkdir(parents=True)
@@ -754,7 +754,7 @@ class MemoryCoreTests(unittest.TestCase):
         self.assertIn("opposite_negation", conflicts[0]["conflict_reasons"])
 
     def test_memory_resolution_logs_and_recall_state(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-resolution-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-resolution-")))
         wiki = root / "wiki"
         memories = wiki / "memories"
         memories.mkdir(parents=True)
@@ -856,7 +856,7 @@ class MemoryCoreTests(unittest.TestCase):
         self.assertEqual(disabled["state"], "disabled")
 
     def test_memory_explanation_reports_audit_payload_and_graph(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-explain-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-explain-")))
         wiki = root / "wiki"
         memories = wiki / "memories"
         memories.mkdir(parents=True)
@@ -909,7 +909,7 @@ class MemoryCoreTests(unittest.TestCase):
         self.assertEqual(extract_wikilinks("[[one]] [[one]] [[two|Two]]"), ["one", "two"])
 
     def test_memory_lifecycle_mutations_update_files_and_callbacks(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-lifecycle-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-lifecycle-")))
         wiki = root / "wiki"
         memories = wiki / "memories"
         memories.mkdir(parents=True)
@@ -1084,7 +1084,7 @@ class MemoryCoreTests(unittest.TestCase):
         self.assertEqual(pending_operations(wiki), [])
 
     def test_write_memory_page_creates_index_log_and_blocks_duplicates(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-write-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-write-")))
         wiki = root / "wiki"
         wiki.mkdir(parents=True)
         logged: list[tuple[str, str, str, list[str]]] = []
@@ -1196,7 +1196,7 @@ class MemoryCoreTests(unittest.TestCase):
         self.assertEqual(duplicate_override["name"], "prefer-release-branches-2")
 
     def test_write_memory_page_allows_explicit_team_visibility(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-visibility-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-visibility-")))
         wiki = root / "wiki"
         wiki.mkdir(parents=True)
 

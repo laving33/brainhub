@@ -13,7 +13,7 @@ from brainhub_core.memory_log import memory_log_payload  # noqa: E402
 
 class MemoryLogCoreTests(unittest.TestCase):
     def test_memory_log_filters_lifecycle_entries(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-log-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-log-")))
         wiki = root / "wiki"
         wiki.mkdir(parents=True)
         append_log(wiki, "2026-05-25T00:00:00Z", "rebuild-index", "Rebuilt index", ["Pages: 3"])
@@ -36,7 +36,7 @@ class MemoryLogCoreTests(unittest.TestCase):
         self.assertIn("Memory bodies", payload["privacy_note"])
 
     def test_memory_log_can_hide_capture_events(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-log-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-log-")))
         wiki = root / "wiki"
         wiki.mkdir(parents=True)
         append_log(wiki, "2026-05-25T00:00:00Z", "capture-session", "Captured raw/memory-captures/a.md", [])
@@ -46,7 +46,7 @@ class MemoryLogCoreTests(unittest.TestCase):
         self.assertEqual(payload["count"], 0)
 
     def test_memory_log_includes_nonstandard_operations_that_touch_memories(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-log-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-log-")))
         wiki = root / "wiki"
         wiki.mkdir(parents=True)
         append_log(
@@ -64,7 +64,7 @@ class MemoryLogCoreTests(unittest.TestCase):
         self.assertEqual(payload["entries"][0]["memory_paths"], ["wiki/memories/prefer-local-memory.md"])
 
     def test_memory_log_extracts_privacy_safe_state_changes(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-log-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-log-")))
         wiki = root / "wiki"
         wiki.mkdir(parents=True)
         append_log(

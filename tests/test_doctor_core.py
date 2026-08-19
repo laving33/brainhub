@@ -82,7 +82,7 @@ class DoctorCoreTests(unittest.TestCase):
         self.assertEqual(text, "items: 0, 1, 2")
 
     def test_apply_doctor_fixes_initializes_workspace(self):
-        root = Path(tempfile.mkdtemp(prefix="link-doctor-fixes-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-fixes-")))
 
         fixes = apply_doctor_fixes(root)
 
@@ -106,7 +106,7 @@ class DoctorCoreTests(unittest.TestCase):
         self.assertIn("wiki/memories", paths)
 
     def test_build_doctor_report_uses_shared_health_checks(self):
-        root = Path(tempfile.mkdtemp(prefix="link-doctor-report-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-report-")))
         apply_doctor_fixes(root)
 
         report = build_doctor_report(
@@ -123,7 +123,7 @@ class DoctorCoreTests(unittest.TestCase):
         self.assertIn("OK no sensitive-looking filenames", report.ok)
 
     def test_build_doctor_report_uses_cache_backed_backlinks(self):
-        root = Path(tempfile.mkdtemp(prefix="link-doctor-report-cache-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-report-cache-")))
         apply_doctor_fixes(root)
 
         with patch.object(
@@ -137,7 +137,7 @@ class DoctorCoreTests(unittest.TestCase):
         self.assertGreaterEqual(cached_backlinks.call_count, 2)
 
     def test_build_doctor_report_fails_on_stale_operation_marker(self):
-        root = Path(tempfile.mkdtemp(prefix="link-doctor-report-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-report-")))
         apply_doctor_fixes(root)
         begin_operation(root / "wiki", "remember", "Saved memory", timestamp="2000-01-01T00:00:00Z")
 
@@ -147,7 +147,7 @@ class DoctorCoreTests(unittest.TestCase):
         self.assertTrue(any("incomplete BrainHub operations need review" in error for error in report.errors))
 
     def test_build_doctor_report_fails_on_tampered_audit_log(self):
-        root = Path(tempfile.mkdtemp(prefix="link-doctor-report-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-report-")))
         apply_doctor_fixes(root)
         wiki_dir = root / "wiki"
         append_log(
@@ -169,7 +169,7 @@ class DoctorCoreTests(unittest.TestCase):
         self.assertTrue(any("audit log hash chain broken" in error for error in report.errors))
 
     def test_page_health_helpers_find_doctor_findings(self):
-        root = Path(tempfile.mkdtemp(prefix="link-doctor-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-core-")))
         wiki = root / "wiki"
         (wiki / "concepts").mkdir(parents=True)
         (wiki / "sources").mkdir()
@@ -219,7 +219,7 @@ class DoctorCoreTests(unittest.TestCase):
         self.assertEqual(refs, ["raw/one.md", "raw/two.md"])
 
     def test_repair_source_page_validation_shape(self):
-        root = Path(tempfile.mkdtemp(prefix="link-doctor-repair-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-repair-")))
         page = root / "source.md"
         page.write_text(
             "---\ntype: source\ntitle: Agent Memory Session\n---\n\n"
@@ -242,7 +242,7 @@ class DoctorCoreTests(unittest.TestCase):
         self.assertIn("`raw/agent-memory-session.md`", text)
 
     def test_repair_validation_findings_repairs_source_pages_only(self):
-        root = Path(tempfile.mkdtemp(prefix="link-doctor-repair-findings-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-repair-findings-")))
         wiki = root / "wiki"
         (wiki / "sources").mkdir(parents=True)
         (wiki / "sources" / "session.md").write_text(

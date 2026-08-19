@@ -32,7 +32,7 @@ def _write_page(path: Path, title: str, page_type: str, body: str) -> None:
 
 class SnapshotCoreTests(unittest.TestCase):
     def setUp(self):
-        self.root = Path(tempfile.mkdtemp(prefix="link-snapshot-test-"))
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-snapshot-test-")))
         self.wiki = self.root / "wiki"
         for name in ("concepts", "entities", "sources", "memories", "comparisons", "explorations"):
             (self.wiki / name).mkdir(parents=True, exist_ok=True)

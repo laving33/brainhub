@@ -68,7 +68,7 @@ class HistoryFileTests(unittest.TestCase):
     """The append-only log on its own — no server."""
 
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="dash-history-"))
+        self.tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="dash-history-")))
         self.path = dh.history_path(self.tmp)
 
     def test_build_snapshot_keeps_counts_and_drops_item_text(self):
@@ -339,7 +339,7 @@ class DashboardTrendRouteTests(unittest.TestCase):
     """End to end through /dashboard — both controls, on the real page."""
 
     def make_workspace(self) -> Path:
-        tmp = Path(tempfile.mkdtemp(prefix="dashboard-trend-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="dashboard-trend-")))
         wiki = tmp / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")

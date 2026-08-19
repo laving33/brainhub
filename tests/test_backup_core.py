@@ -15,7 +15,7 @@ from brainhub_core.backup import BackupError, RestoreError, create_backup, list_
 
 class BackupCoreTests(unittest.TestCase):
     def make_root(self) -> Path:
-        root = Path(tempfile.mkdtemp(prefix="link-backup-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-backup-core-")))
         (root / "wiki/concepts").mkdir(parents=True)
         (root / "raw").mkdir()
         (root / "wiki/index.md").write_text("# Index\n", encoding="utf-8")
@@ -70,7 +70,7 @@ class BackupCoreTests(unittest.TestCase):
         self.assertEqual(listing["warnings"][0]["backup"], archive.name)
 
     def test_backup_requires_wiki(self):
-        root = Path(tempfile.mkdtemp(prefix="link-backup-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-backup-core-")))
 
         with self.assertRaises(FileNotFoundError):
             create_backup(root)

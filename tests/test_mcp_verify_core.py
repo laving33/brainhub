@@ -108,7 +108,7 @@ class McpVerifyCoreTests(unittest.TestCase):
         self.assertIn("link-python", expand_command_prefix("~/link-python"))
 
     def test_resolve_mcp_python_uses_marker(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-mcp-verify-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-mcp-verify-")))
         self.addCleanup(lambda: shutil.rmtree(root, ignore_errors=True))
         (root / ".brainhub-mcp-python").write_text("/tmp/link-python\n", encoding="utf-8")
 

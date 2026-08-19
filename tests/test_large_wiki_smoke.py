@@ -30,7 +30,7 @@ def write_page(wiki: Path, rel: str, text: str) -> None:
 
 class LargeWikiSmokeTests(unittest.TestCase):
     def test_smart_query_and_graph_handle_hundreds_of_pages(self):
-        root = Path(tempfile.mkdtemp(prefix="link-large-wiki-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-large-wiki-")))
         wiki = root / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")
@@ -124,7 +124,7 @@ class LargeWikiSmokeTests(unittest.TestCase):
             smoke_large_wiki.check_timing_thresholds({"query": 0.03}, {"query": 0.02})
 
     def test_large_wiki_smoke_reports_benchmark_health(self):
-        root = Path(tempfile.mkdtemp(prefix="link-large-wiki-health-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-large-wiki-health-")))
 
         payload = smoke_large_wiki.run_smoke(root, 80)
 

@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class DemoCoreTests(unittest.TestCase):
     def test_copy_runtime_files_from_source_tree(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-demo-core-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-demo-core-test-")))
         target = tmp / "target"
 
         copy_runtime_files(ROOT, target)
@@ -27,7 +27,7 @@ class DemoCoreTests(unittest.TestCase):
         self.assertTrue((target / "logo.svg").exists())
 
     def test_create_demo_workspace_creates_preingested_wiki(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-demo-core-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-demo-core-test-")))
         target = tmp / "demo"
 
         payload = create_demo_workspace(target, source_root=ROOT)
@@ -46,7 +46,7 @@ class DemoCoreTests(unittest.TestCase):
         # The first recall a new user sees should show a believable memory
         # system: several memories, mostly reviewed, one pending to teach the
         # review loop.
-        tmp = Path(tempfile.mkdtemp(prefix="link-demo-core-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-demo-core-test-")))
         target = tmp / "demo"
 
         create_demo_workspace(target, source_root=ROOT)
@@ -64,7 +64,7 @@ class DemoCoreTests(unittest.TestCase):
         self.assertEqual(statuses.count("pending"), 1)
 
     def test_create_demo_workspace_refuses_non_demo_directory(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-demo-core-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-demo-core-test-")))
         target = tmp / "not-demo"
         target.mkdir()
         keep = target / "keep.txt"
@@ -77,7 +77,7 @@ class DemoCoreTests(unittest.TestCase):
         self.assertEqual(keep.read_text(encoding="utf-8"), "keep")
 
     def test_create_demo_workspace_force_replaces_marked_demo(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-demo-core-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-demo-core-test-")))
         target = tmp / "demo"
         create_demo_workspace(target, source_root=ROOT)
         old = target / "old.txt"

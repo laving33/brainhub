@@ -16,7 +16,7 @@ from brainhub_core.files import append_text, append_text_with_rotation, atomic_w
 
 class FilesCoreTests(unittest.TestCase):
     def test_atomic_write_text_replaces_existing_file(self):
-        root = Path(tempfile.mkdtemp(prefix="link-files-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-files-core-")))
         path = root / "wiki/index.md"
         path.parent.mkdir(parents=True)
         path.write_text("old\n", encoding="utf-8")
@@ -27,7 +27,7 @@ class FilesCoreTests(unittest.TestCase):
         self.assertEqual(list(path.parent.glob(".*.tmp")), [])
 
     def test_atomic_write_json_adds_trailing_newline(self):
-        root = Path(tempfile.mkdtemp(prefix="link-files-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-files-core-")))
         path = root / "wiki/_backlinks.json"
 
         atomic_write_json(path, {"backlinks": {}, "forward": {}})
@@ -36,7 +36,7 @@ class FilesCoreTests(unittest.TestCase):
         self.assertEqual(json.loads(path.read_text(encoding="utf-8")), {"backlinks": {}, "forward": {}})
 
     def test_atomic_write_preserves_existing_file_on_replace_failure(self):
-        root = Path(tempfile.mkdtemp(prefix="link-files-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-files-core-")))
         path = root / "wiki/index.md"
         path.parent.mkdir(parents=True)
         path.write_text("old\n", encoding="utf-8")
@@ -49,7 +49,7 @@ class FilesCoreTests(unittest.TestCase):
         self.assertEqual(list(path.parent.glob(".*.tmp")), [])
 
     def test_atomic_write_recovers_stale_lock_file(self):
-        root = Path(tempfile.mkdtemp(prefix="link-files-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-files-core-")))
         path = root / "wiki/index.md"
         path.parent.mkdir(parents=True)
         lock = path.parent / ".index.md.lock"
@@ -64,7 +64,7 @@ class FilesCoreTests(unittest.TestCase):
     def test_lock_retries_on_transient_permission_error(self):
         # Windows raises PermissionError (not FileExistsError) for a contended
         # O_EXCL lock file; the lock must retry instead of propagating it.
-        root = Path(tempfile.mkdtemp(prefix="link-files-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-files-core-")))
         path = root / "wiki/index.md"
 
         real_open = os.open
@@ -86,7 +86,7 @@ class FilesCoreTests(unittest.TestCase):
         self.assertEqual(list(path.parent.glob(".*.lock")), [])
 
     def test_append_text_initializes_and_serializes_audit_log(self):
-        root = Path(tempfile.mkdtemp(prefix="link-files-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-files-core-")))
         path = root / "wiki/log.md"
 
         def append(index: int) -> None:
@@ -102,7 +102,7 @@ class FilesCoreTests(unittest.TestCase):
         self.assertEqual(list(path.parent.glob(".*.lock")), [])
 
     def test_append_text_with_rotation_rotates_before_append(self):
-        root = Path(tempfile.mkdtemp(prefix="link-files-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-files-core-")))
         path = root / "wiki/log.md"
         path.parent.mkdir(parents=True)
         path.write_text("# Log\n\n" + ("old\n" * 12), encoding="utf-8")
@@ -115,7 +115,7 @@ class FilesCoreTests(unittest.TestCase):
         self.assertFalse((path.parent / "log.md.3").exists())
 
     def test_append_text_with_rotation_honors_backup_limit(self):
-        root = Path(tempfile.mkdtemp(prefix="link-files-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-files-core-")))
         path = root / "wiki/log.md"
         path.parent.mkdir(parents=True)
         path.write_text("active\n" * 10, encoding="utf-8")

@@ -45,7 +45,7 @@ def write_memory(
 
 class TeamSyncCoreTests(unittest.TestCase):
     def test_plan_for_workspace_without_git_includes_safe_setup(self):
-        root = Path(tempfile.mkdtemp(prefix="link-team-sync-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-team-sync-")))
         (root / "wiki").mkdir()
         (root / "wiki" / "_brainhub_schema.json").write_text("{}", encoding="utf-8")
         (root / ".gitignore").write_text("raw/*\n.brainhub-backups/\n", encoding="utf-8")
@@ -66,7 +66,7 @@ class TeamSyncCoreTests(unittest.TestCase):
         self.assertNotIn("wiki/log.md", stage_commands[0])
 
     def test_git_workspace_with_raw_protection_is_ready(self):
-        root = Path(tempfile.mkdtemp(prefix="link-team-sync-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-team-sync-")))
         (root / "wiki").mkdir()
         (root / "wiki" / "_brainhub_schema.json").write_text("{}", encoding="utf-8")
         (root / "BRAINHUB-SCHEMA.md").write_text("# Link\n", encoding="utf-8")
@@ -100,7 +100,7 @@ class TeamSyncCoreTests(unittest.TestCase):
         self.assertNotIn("wiki/log.md", stage_commands[0])
 
     def test_git_workspace_without_raw_protection_warns(self):
-        root = Path(tempfile.mkdtemp(prefix="link-team-sync-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-team-sync-")))
         (root / "wiki").mkdir()
         (root / "wiki" / "_brainhub_schema.json").write_text("{}", encoding="utf-8")
         (root / ".git").mkdir()
@@ -111,7 +111,7 @@ class TeamSyncCoreTests(unittest.TestCase):
         self.assertIn("raw/ is not protected", payload["warnings"][0])
 
     def test_private_memories_block_team_sync_readiness(self):
-        root = Path(tempfile.mkdtemp(prefix="link-team-sync-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-team-sync-")))
         (root / "wiki").mkdir()
         (root / "wiki" / "_brainhub_schema.json").write_text("{}", encoding="utf-8")
         (root / ".gitignore").write_text("raw/*\n", encoding="utf-8")
@@ -134,7 +134,7 @@ class TeamSyncCoreTests(unittest.TestCase):
         self.assertIn("1 private", text)
 
     def test_user_scoped_team_visibility_can_be_intentionally_shared(self):
-        root = Path(tempfile.mkdtemp(prefix="link-team-sync-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-team-sync-")))
         (root / "wiki").mkdir()
         (root / "wiki" / "_brainhub_schema.json").write_text("{}", encoding="utf-8")
         (root / ".gitignore").write_text("raw/*\n", encoding="utf-8")
@@ -153,7 +153,7 @@ class TeamSyncCoreTests(unittest.TestCase):
         self.assertEqual(payload["memory_share"]["private_visibility_count"], 0)
 
     def test_unreviewed_memories_block_team_sync_readiness(self):
-        root = Path(tempfile.mkdtemp(prefix="link-team-sync-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-team-sync-")))
         (root / "wiki").mkdir()
         (root / "wiki" / "_brainhub_schema.json").write_text("{}", encoding="utf-8")
         (root / ".gitignore").write_text("raw/*\n", encoding="utf-8")

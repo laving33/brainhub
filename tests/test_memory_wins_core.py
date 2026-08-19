@@ -49,7 +49,7 @@ def write_memory(
 
 class MemoryWinsCoreTests(unittest.TestCase):
     def test_memory_wins_payload_summarizes_local_signals_without_telemetry(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-wins-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-wins-")))
         wiki = root / "wiki"
         wiki.mkdir(parents=True)
         write_memory(wiki, "alpha", title="Alpha continuity", project="alpha", review_after="2026-12-01")
@@ -71,7 +71,7 @@ class MemoryWinsCoreTests(unittest.TestCase):
         self.assertNotIn("body", payload["recent_memories"][0])
 
     def test_memory_wins_project_filter_keeps_global_memory_and_matching_project(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-memory-wins-project-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-wins-project-")))
         wiki = root / "wiki"
         wiki.mkdir(parents=True)
         write_memory(wiki, "alpha", title="Alpha continuity", project="alpha")

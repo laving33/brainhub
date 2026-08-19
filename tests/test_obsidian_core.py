@@ -12,7 +12,7 @@ from brainhub_core.obsidian import import_obsidian_vault, render_import_obsidian
 
 class ObsidianCoreTests(unittest.TestCase):
     def make_vault(self) -> Path:
-        vault = Path(tempfile.mkdtemp(prefix="link-obsidian-vault-"))
+        vault = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-obsidian-vault-")))
         (vault / "Projects").mkdir()
         (vault / ".obsidian").mkdir()
         (vault / "Projects" / "Plan.md").write_text("# Plan\n\nShip Link.\n", encoding="utf-8")
@@ -22,7 +22,7 @@ class ObsidianCoreTests(unittest.TestCase):
         return vault
 
     def test_import_obsidian_vault_copies_markdown_notes(self):
-        target = Path(tempfile.mkdtemp(prefix="link-obsidian-target-"))
+        target = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-obsidian-target-")))
         vault = self.make_vault()
 
         payload = import_obsidian_vault(target, vault)
@@ -37,7 +37,7 @@ class ObsidianCoreTests(unittest.TestCase):
         self.assertIn("ingest raw/obsidian", payload["next_prompt"])
 
     def test_import_obsidian_vault_blocks_secret_notes(self):
-        target = Path(tempfile.mkdtemp(prefix="link-obsidian-target-"))
+        target = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-obsidian-target-")))
         vault = self.make_vault()
         (vault / "Secrets.md").write_text("token sk-ant-" + "a" * 30, encoding="utf-8")
 
@@ -51,7 +51,7 @@ class ObsidianCoreTests(unittest.TestCase):
         self.assertFalse((target / str(payload["raw_prefix"]) / "Secrets.md").exists())
 
     def test_import_obsidian_vault_dry_run_does_not_write(self):
-        target = Path(tempfile.mkdtemp(prefix="link-obsidian-target-"))
+        target = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-obsidian-target-")))
         vault = self.make_vault()
 
         payload = import_obsidian_vault(target, vault, dry_run=True)

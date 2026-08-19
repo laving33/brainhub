@@ -39,7 +39,7 @@ def _batch(**overrides) -> dict:
 
 class DecisionBoardTests(unittest.TestCase):
     def make_workspace(self) -> Path:
-        tmp = Path(tempfile.mkdtemp(prefix="decision-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="decision-test-")))
         wiki = tmp / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")

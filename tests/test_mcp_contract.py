@@ -98,7 +98,7 @@ def import_mcp_server(wiki_dir: Path, surface: str = "full"):
 
 class McpContractTests(unittest.TestCase):
     def setUp(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-mcp-contract-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-mcp-contract-")))
         self.target = tmp / "demo"
         create_demo_quiet(self.target)
         self.server, self.previous_modules, self.previous_argv, self.module_name = import_mcp_server(self.target / "wiki")
@@ -422,7 +422,7 @@ class McpContractTests(unittest.TestCase):
 
     def test_missing_wiki_message_points_to_current_setup_paths(self):
         previous_argv = sys.argv[:]
-        missing = Path(tempfile.mkdtemp(prefix="brainhub-mcp-missing-")) / "missing" / "wiki"
+        missing = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-mcp-missing-"))) / "missing" / "wiki"
         module_name = f"link_mcp_server_missing_{id(missing)}"
         try:
             sys.argv = ["brainhub_mcp.server", "--wiki", str(missing)]
@@ -449,7 +449,7 @@ class McpContractTests(unittest.TestCase):
         # and the stdio server starts, hanging silently in a terminal — the
         # first exploratory command a pip user runs must not dead-end.
         previous_argv = sys.argv[:]
-        missing = Path(tempfile.mkdtemp(prefix="brainhub-mcp-help-")) / "missing" / "wiki"
+        missing = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-mcp-help-"))) / "missing" / "wiki"
         module_name = f"link_mcp_server_help_{id(missing)}"
         try:
             sys.argv = ["brainhub_mcp.server", "--wiki", str(missing), "--help"]
@@ -475,7 +475,7 @@ class McpContractTests(unittest.TestCase):
 
     def test_version_flag_does_not_require_wiki_or_mcp_sdk(self):
         previous_argv = sys.argv[:]
-        missing = Path(tempfile.mkdtemp(prefix="brainhub-mcp-version-")) / "missing" / "wiki"
+        missing = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-mcp-version-"))) / "missing" / "wiki"
         module_name = f"link_mcp_server_version_{id(missing)}"
         try:
             sys.argv = ["brainhub_mcp.server", "--wiki", str(missing), "--version"]

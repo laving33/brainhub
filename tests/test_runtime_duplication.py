@@ -27,7 +27,7 @@ class RuntimeDuplicationTests(unittest.TestCase):
         self.assertEqual(findings, [])
 
     def test_large_duplicate_private_helper_is_reported(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-runtime-dup-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-runtime-dup-test-")))
         a = tmp / "a.py"
         b = tmp / "b.py"
         body = "\n".join(f"    value += {i}" for i in range(22))
@@ -41,7 +41,7 @@ class RuntimeDuplicationTests(unittest.TestCase):
         self.assertTrue(any("_copied" in finding for finding in findings))
 
     def test_exact_duplicate_body_is_reported_even_with_different_names(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-runtime-dup-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-runtime-dup-test-")))
         a = tmp / "a.py"
         b = tmp / "b.py"
         body = "\n".join(f"    value += {i}" for i in range(12))
@@ -55,7 +55,7 @@ class RuntimeDuplicationTests(unittest.TestCase):
         self.assertTrue(any("exact duplicate" in finding for finding in findings))
 
     def test_report_tracks_thin_duplicate_private_helpers_without_failing(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-runtime-dup-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-runtime-dup-test-")))
         a = tmp / "a.py"
         b = tmp / "b.py"
         a.write_text("def _adapter():\n    return 1\n", encoding="utf-8")

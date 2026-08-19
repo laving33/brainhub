@@ -20,7 +20,7 @@ from brainhub_core.wiki import build_wiki_cache, close_wiki_cache  # noqa: E402
 
 class ProjectSeedCoreTests(unittest.TestCase):
     def test_discovers_allowlisted_project_context_files(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-project-seed-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-project-seed-test-")))
         project = tmp / "client-app"
         (project / ".cursor/rules").mkdir(parents=True)
         (project / "README.md").write_text("# Client App\n", encoding="utf-8")
@@ -34,7 +34,7 @@ class ProjectSeedCoreTests(unittest.TestCase):
         self.assertEqual(paths, ["README.md", "AGENTS.md", ".cursor/rules/style.mdc"])
 
     def test_seed_project_writes_source_backed_context_and_rebuilds_indexes(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-project-seed-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-project-seed-test-")))
         project = tmp / "client-app"
         target = tmp / "link"
         project.mkdir()
@@ -83,7 +83,7 @@ class ProjectSeedCoreTests(unittest.TestCase):
         self.assertIn("Project seed: Client App", page_titles)
 
     def test_seed_project_is_safe_to_rerun_without_overwrite(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-project-seed-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-project-seed-test-")))
         project = tmp / "client-app"
         target = tmp / "link"
         project.mkdir()
@@ -99,7 +99,7 @@ class ProjectSeedCoreTests(unittest.TestCase):
         self.assertIn("--overwrite", text)
 
     def test_seed_project_fails_closed_on_secret_values(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-project-seed-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-project-seed-test-")))
         project = tmp / "client-app"
         target = tmp / "link"
         project.mkdir()
@@ -116,7 +116,7 @@ class ProjectSeedCoreTests(unittest.TestCase):
         self.assertIn("Blocked files:", text)
 
     def test_seed_project_dry_run_writes_nothing(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-project-seed-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-project-seed-test-")))
         project = tmp / "client-app"
         target = tmp / "link"
         project.mkdir()

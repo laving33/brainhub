@@ -58,6 +58,11 @@ jobs:
         if: always()
         run: python scripts/check_runtime_duplication.py
 
+      - name: Temp directories have an owner
+        id: temp_hygiene
+        if: always()
+        run: python scripts/check_temp_hygiene.py
+
       - name: Summary
         if: always()
         run: |
@@ -67,4 +72,5 @@ jobs:
             echo "| Unit tests | ${{ steps.unittest.outcome }} |"
             echo "| Docs sync | ${{ steps.docs_sync.outcome }} |"
             echo "| Duplication | ${{ steps.duplication.outcome }} |"
+            echo "| Temp hygiene | ${{ steps.temp_hygiene.outcome }} |"
           } >> "$GITHUB_STEP_SUMMARY"

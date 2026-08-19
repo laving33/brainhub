@@ -21,26 +21,26 @@ class ConfigCoreTests(unittest.TestCase):
         self.assertNotIn("wiki", path.parts)
 
     def test_missing_config_reads_as_memory_enabled(self):
-        workspace = Path(tempfile.mkdtemp(prefix="link-config-core-"))
+        workspace = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-config-core-")))
 
         self.assertEqual(load_workspace_config(workspace), {})
         self.assertTrue(memory_layer_enabled(workspace))
 
     def test_invalid_config_reads_as_memory_enabled(self):
-        workspace = Path(tempfile.mkdtemp(prefix="link-config-core-"))
+        workspace = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-config-core-")))
         config_path(workspace).write_text("not json", encoding="utf-8")
 
         self.assertEqual(load_workspace_config(workspace), {})
         self.assertTrue(memory_layer_enabled(workspace))
 
     def test_memory_enabled_false_disables_the_memory_layer(self):
-        workspace = Path(tempfile.mkdtemp(prefix="link-config-core-"))
+        workspace = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-config-core-")))
         config_path(workspace).write_text('{"memory_enabled": false}\n', encoding="utf-8")
 
         self.assertFalse(memory_layer_enabled(workspace))
 
     def test_disabled_notice_names_the_config_file(self):
-        workspace = Path(tempfile.mkdtemp(prefix="link-config-core-"))
+        workspace = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-config-core-")))
 
         notice = memory_disabled_notice(workspace)
 

@@ -21,7 +21,7 @@ from brainhub_core.operations import (  # noqa: E402
 
 class OperationsCoreTests(unittest.TestCase):
     def test_operation_journal_clears_marker_on_success(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-operations-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-operations-core-"))) / "wiki"
         wiki.mkdir(parents=True)
         (wiki / "index.md").write_text("# Index\n", encoding="utf-8")
 
@@ -38,7 +38,7 @@ class OperationsCoreTests(unittest.TestCase):
         self.assertEqual(list((wiki / ".brainhub-operations").glob("remember-*")), [])
 
     def test_operation_journal_leaves_failed_marker(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-operations-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-operations-core-"))) / "wiki"
         wiki.mkdir(parents=True)
 
         with self.assertRaisesRegex(RuntimeError, "boom"):
@@ -53,7 +53,7 @@ class OperationsCoreTests(unittest.TestCase):
         self.assertIn("boom", operations[0]["error"])
 
     def test_operation_journal_rolls_back_touched_files_on_failure(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-operations-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-operations-core-"))) / "wiki"
         (wiki / "memories").mkdir(parents=True)
         index_path = wiki / "index.md"
         new_page = wiki / "memories" / "new-memory.md"
@@ -83,7 +83,7 @@ class OperationsCoreTests(unittest.TestCase):
         self.assertIn("Rollback: restored wiki/index.md; removed wiki/memories/new-memory.md", text)
 
     def test_pending_operations_marks_old_marker_stale(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-operations-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-operations-core-"))) / "wiki"
         wiki.mkdir(parents=True)
         begin_operation(wiki, "update-memory", "Update memory", timestamp="2026-05-17T00:00:00Z")
 
@@ -94,7 +94,7 @@ class OperationsCoreTests(unittest.TestCase):
         self.assertEqual(operations[0]["operation"], "update-memory")
 
     def test_operation_report_renders_clear_state(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-operations-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-operations-core-"))) / "wiki"
         wiki.mkdir(parents=True)
 
         payload = operation_report(wiki)
@@ -107,7 +107,7 @@ class OperationsCoreTests(unittest.TestCase):
         self.assertIn("Result: clear", text)
 
     def test_operation_report_renders_stale_marker_guidance(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-operations-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-operations-core-"))) / "wiki"
         wiki.mkdir(parents=True)
         begin_operation(
             wiki,
@@ -131,7 +131,7 @@ class OperationsCoreTests(unittest.TestCase):
         self.assertNotIn("--recover", text)
 
     def test_recover_operation_previews_and_applies_crash_snapshot(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-operations-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-operations-core-"))) / "wiki"
         (wiki / "memories").mkdir(parents=True)
         index_path = wiki / "index.md"
         new_page = wiki / "memories" / "new-memory.md"

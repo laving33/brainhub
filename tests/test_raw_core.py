@@ -12,7 +12,7 @@ from brainhub_core.raw import RawSourceError, create_raw_source, raw_source_file
 
 class RawCoreTests(unittest.TestCase):
     def test_create_raw_source_writes_safe_unique_file(self):
-        root = Path(tempfile.mkdtemp(prefix="link-raw-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-raw-core-")))
 
         first = create_raw_source(
             root,
@@ -41,7 +41,7 @@ class RawCoreTests(unittest.TestCase):
             raw_source_filename("image.png")
 
     def test_create_raw_source_blocks_empty_large_and_secret_values(self):
-        root = Path(tempfile.mkdtemp(prefix="link-raw-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-raw-core-")))
 
         with self.assertRaises(RawSourceError) as empty:
             create_raw_source(root, text="")

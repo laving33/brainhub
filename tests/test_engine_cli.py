@@ -30,7 +30,7 @@ def create_demo_quiet(target: Path, force: bool = False) -> None:
 
 class LinkCliTests(unittest.TestCase):
     def test_init_creates_empty_wiki(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-init-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-init-test-")))
         target = tmp / "my-link"
 
         out = StringIO()
@@ -58,7 +58,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("bh serve", out.getvalue())
 
     def test_init_preserves_existing_pages(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-init-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-init-test-")))
         target = tmp / "my-link"
         page = target / "wiki/concepts/custom.md"
         page.parent.mkdir(parents=True)
@@ -71,7 +71,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(page.read_text(encoding="utf-8"), "# Custom\n")
 
     def test_init_copies_core_from_installed_runtime_layout(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-init-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-init-test-")))
         runtime = tmp / "runtime"
         runtime.mkdir()
         for name in ("serve.py", "brainhub_engine.py", "BRAINHUB-SCHEMA.md", ".brainhubignore"):
@@ -87,7 +87,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertTrue((target / "brainhub_core/frontmatter.py").exists())
 
     def test_prompts_prints_first_run_agent_prompts(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-prompts-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-prompts-test-")))
         target = tmp / "my-link"
 
         out = StringIO()
@@ -104,7 +104,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("bh health", out.getvalue())
 
     def test_prompts_json_supports_project_examples(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-prompts-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-prompts-test-")))
         target = tmp / "my-link"
 
         out = StringIO()
@@ -120,7 +120,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("BrainHub 記得這個專案的什麼？", prompts)
 
     def test_proof_creates_and_recalls_cross_agent_memory(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-proof-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-proof-test-")))
         target = tmp / "link-proof"
 
         out = StringIO()
@@ -142,7 +142,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("start with BrainHub", payload["prompts"]["agent_b"])
 
     def test_onboard_json_seeds_memory_and_personalizes_prompt(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-onboard-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-onboard-test-")))
         target = tmp / "my-link"
 
         out = StringIO()
@@ -164,7 +164,7 @@ class LinkCliTests(unittest.TestCase):
         )
 
     def test_onboard_json_can_seed_project_context(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-onboard-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-onboard-test-")))
         project = tmp / "client-app"
         target = tmp / "my-link"
         project.mkdir()
@@ -192,7 +192,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertTrue((target / "wiki/sources/project-seed-client-app.md").exists())
 
     def test_onboard_text_suggests_project_seed_when_not_run(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-onboard-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-onboard-test-")))
         target = tmp / "my-link"
 
         out = StringIO()
@@ -206,7 +206,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("seed .", text)
 
     def test_seed_project_initializes_workspace_and_writes_source_context(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-seed-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-seed-test-")))
         project = tmp / "client-app"
         target = tmp / "my-link"
         project.mkdir()
@@ -230,7 +230,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertTrue((target / "wiki/_backlinks.json").exists())
 
     def test_welcome_prints_short_first_use_path(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-welcome-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-welcome-test-")))
         target = tmp / "my-link"
 
         out = StringIO()
@@ -247,7 +247,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("http://127.0.0.1:3000/health", text)
 
     def test_welcome_json_supports_project_examples(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-welcome-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-welcome-test-")))
         target = tmp / "my-link"
 
         out = StringIO()
@@ -261,7 +261,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Agent 只在你要求時才存明確記憶", payload["steps"][2]["proves"])
 
     def test_serve_runs_target_viewer(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-serve-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-serve-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -280,7 +280,7 @@ class LinkCliTests(unittest.TestCase):
         ])
 
     def test_serve_reports_missing_wiki(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-serve-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-serve-test-")))
 
         out = StringIO()
         with redirect_stdout(out):
@@ -291,7 +291,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("bh init", out.getvalue())
 
     def test_serve_validates_port_before_spawning_viewer(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-serve-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-serve-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -304,7 +304,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("--port must be between 1 and 65535", out.getvalue())
 
     def test_serve_handles_ctrl_c_without_traceback(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-serve-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-serve-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -314,7 +314,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(code, 130)
 
     def test_demo_creates_preingested_wiki(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-demo-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-demo-test-")))
         target = tmp / "demo"
 
         create_demo_quiet(target)
@@ -342,7 +342,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("agent-memory", backlinks["forward"]["link"])
 
     def test_demo_output_uses_copied_runtime_path(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-demo-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-demo-test-")))
         target = tmp / "demo"
 
         out = StringIO()
@@ -354,7 +354,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn(str(target.resolve()), out.getvalue())
 
     def test_import_obsidian_copies_notes_to_raw(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-obsidian-cli-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-obsidian-cli-")))
         target = tmp / "link"
         vault = tmp / "vault"
         (vault / "Architecture").mkdir(parents=True)
@@ -370,7 +370,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Ask your agent: ingest raw/obsidian/vault into BrainHub", out.getvalue())
 
     def test_compliance_export_writes_redacted_audit_json(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-compliance-cli-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-compliance-cli-")))
         target = tmp / "demo"
         output = tmp / "audit.json"
         create_demo_quiet(target)
@@ -388,7 +388,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("BrainHub compliance export", out.getvalue())
 
     def test_demo_refuses_to_overwrite_non_demo_directory(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-demo-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-demo-test-")))
         target = tmp / "not-demo"
         target.mkdir()
         (target / "keep.txt").write_text("do not replace", encoding="utf-8")
@@ -402,7 +402,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual((target / "keep.txt").read_text(encoding="utf-8"), "do not replace")
 
     def test_demo_force_replaces_demo_directory(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-demo-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-demo-test-")))
         target = tmp / "demo"
 
         create_demo_quiet(target)
@@ -413,7 +413,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertTrue((target / "wiki/index.md").exists())
 
     def test_doctor_accepts_demo_wiki(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -429,7 +429,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("memories need review", out.getvalue())
 
     def test_ingest_status_accepts_demo_wiki(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-ingest-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -443,7 +443,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Backlinks: current", out.getvalue())
 
     def test_capture_session_is_not_pending_source_ingest(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-ingest-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -471,7 +471,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("raw files not referenced by wiki pages", doctor_out.getvalue())
 
     def test_ingest_status_reports_pending_raw_file(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-ingest-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / "raw/new-source.md").write_text("# New source\n", encoding="utf-8")
@@ -494,7 +494,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("bh health", out.getvalue())
 
     def test_ingest_status_reports_represented_completion(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-ingest-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -512,7 +512,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Next check: start with BrainHub before we continue", text)
 
     def test_ingest_status_reports_stale_represented_raw_file(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-ingest-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         raw_page = target / "raw/agent-memory-session.md"
@@ -538,7 +538,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("raw/agent-memory-session.md -> wiki/sources/agent-memory-session.md", text)
 
     def test_ingest_status_warns_before_secret_raw_ingest(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-ingest-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / "raw/secret-note.md").write_text(
@@ -559,7 +559,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("Ask your agent: ingest raw/secret-note.md into Link", out.getvalue())
 
     def test_ingest_status_blocks_unreadable_raw_ingest(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-ingest-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / "raw/locked-note.md").write_text("# Locked note\n", encoding="utf-8")
@@ -584,7 +584,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("Ask your agent: ingest raw/locked-note.md into Link", text)
 
     def test_ingest_status_blocks_unreadable_source_pages(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-ingest-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / "wiki/sources/broken.md").write_text(
@@ -611,7 +611,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("Ask your agent:", text)
 
     def test_ingest_status_json(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-ingest-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / "raw/new-source.md").write_text("# New source\n", encoding="utf-8")
@@ -630,7 +630,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(data["plan"]["batch"][0]["suggested_source_page"], "wiki/sources/new-source.md")
 
     def test_ingest_status_reports_stale_backlinks(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-ingest-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         backlinks_path = target / "wiki/_backlinks.json"
@@ -646,7 +646,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Run: bh rebuild-backlinks", out.getvalue())
 
     def test_status_reports_demo_readiness(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-status-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-status-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -673,7 +673,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertGreater(status_payload["content_page_count"], 0)
 
     def test_status_guides_empty_initialized_wiki_to_project_seed(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-status-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-status-test-")))
         target = tmp / "my-link"
         with redirect_stdout(StringIO()):
             self.assertEqual(engine_cli.init_wiki(target), 0)
@@ -707,7 +707,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(payload["next_actions"][2]["arguments"], {"action": "prompts"})
 
     def test_health_combines_status_and_operations(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-health-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-health-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -732,7 +732,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(payload["operations"]["operation_count"], 0)
 
     def test_operations_reports_interrupted_write_markers(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-operations-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-operations-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         begin_operation(
@@ -761,7 +761,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(payload["operations"][0]["operation"], "remember")
 
     def test_health_reports_interrupted_write_markers(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-health-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-health-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         begin_operation(
@@ -782,7 +782,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("bh operations", out.getvalue())
 
     def test_status_prints_readiness_warnings(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-status-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-status-test-")))
         target = tmp / "my-link"
         payload = {
             "ready": False,
@@ -833,7 +833,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn(f"BrainHub {engine_cli.BRAINHUB_VERSION}", out.getvalue())
 
     def test_backup_creates_local_archive_without_raw_by_default(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-backup-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-backup-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / "raw/private-note.md").write_text("secret source", encoding="utf-8")
@@ -852,7 +852,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("raw/private-note.md", names)
 
     def test_backup_json_can_include_raw_and_list_archives(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-backup-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-backup-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / "raw/private-note.md").write_text("source", encoding="utf-8")
@@ -874,7 +874,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(listing["backups"][0]["name"], payload["name"])
 
     def test_backup_reports_controlled_error_on_archive_failure(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-backup-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-backup-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         original_add = tarfile.TarFile.add
@@ -896,7 +896,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(list((target / ".brainhub-backups").glob("*.tar.gz")), [])
 
     def test_backup_list_reports_unreadable_archive_warning(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-backup-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-backup-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -924,7 +924,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("could not read backup", text_out.getvalue())
 
     def test_migrate_repairs_schema_marker(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-migrate-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-migrate-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / "wiki/_brainhub_schema.json").unlink()
@@ -939,7 +939,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Result: current", out.getvalue())
 
     def test_migrate_json_reports_current_schema(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-migrate-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-migrate-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -953,7 +953,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertFalse(payload["migrated"])
 
     def test_status_json_reports_missing_structure(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-status-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-status-test-")))
         target = tmp / "empty"
 
         out = StringIO()
@@ -967,7 +967,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(payload["search_backend"], "unavailable")
 
     def test_validate_accepts_demo_wiki(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-validate-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-validate-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -980,7 +980,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Result: passed", out.getvalue())
 
     def test_validate_reports_agent_format_errors_as_json(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-validate-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-validate-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         page = target / "wiki/concepts/agent-memory.md"
@@ -1006,7 +1006,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("stale_backlinks", codes)
 
     def test_validate_strict_fails_on_warnings(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-validate-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-validate-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         page = target / "wiki/concepts/agent-memory.md"
@@ -1029,7 +1029,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Result: failed (0 errors, 1 warnings)", strict_out.getvalue())
 
     def test_remember_creates_memory_page_and_updates_backlinks(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1059,7 +1059,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Memory saved", out.getvalue())
 
     def test_remember_blocks_strong_duplicate_by_default(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -1106,7 +1106,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(override["name"], "prefer-release-branches-2")
 
     def test_remember_blocks_conflict_by_default(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -1134,7 +1134,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertFalse((target / "wiki/memories/prefer-develop-branches.md").exists())
 
     def test_update_memory_merges_text_and_resets_review(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -1170,7 +1170,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("prefer-local-personal-memory", backlinks["backlinks"]["link"])
 
     def test_set_memory_visibility_updates_frontmatter_and_log(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-visibility-cli-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-visibility-cli-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1196,7 +1196,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("New visibility: team", log_text)
 
     def test_propose_memories_from_session_note_without_writing(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -1236,7 +1236,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertFalse((target / "wiki/memories/decision-keep-memory-mode-local.md").exists())
 
     def test_recall_finds_memory_pages(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -1258,7 +1258,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Recall: needs_review", out.getvalue())
 
     def test_recall_json(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -1276,7 +1276,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(payload["memories"][0]["review_issue_count"], 1)
 
     def test_recall_json_filters_project(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -1307,7 +1307,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual([item["name"] for item in payload["memories"]], ["alpha-api-imports"])
 
     def test_profile_summarizes_memories(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -1332,7 +1332,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Keep Memory Mode local", out.getvalue())
 
     def test_profile_json(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1348,7 +1348,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(payload["review_count"], 1)
 
     def test_brief_primes_agent_memory(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1362,7 +1362,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Agent guidance", out.getvalue())
 
     def test_brief_json(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1379,7 +1379,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("body", payload["relevant_memories"][0])
 
     def test_start_combines_readiness_and_brief(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-start-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-start-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1395,7 +1395,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Need more context:", out.getvalue())
 
     def test_start_json(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-start-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-start-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1413,7 +1413,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertFalse(payload["project_seed"]["recommended"])
 
     def test_start_recommends_project_seed_for_empty_workspace(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-start-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-start-test-")))
         target = tmp / "empty-link"
         with redirect_stdout(StringIO()):
             engine_cli.init_wiki(target)
@@ -1437,7 +1437,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Run from the project repo", text_out.getvalue())
 
     def test_start_shows_context_preview_after_project_seed(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-start-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-start-test-")))
         project = tmp / "client-app"
         target = tmp / "my-link"
         project.mkdir()
@@ -1459,7 +1459,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("Seed project context:", text)
 
     def test_query_builds_context_packet(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-query-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-query-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1477,7 +1477,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("context_packet", payload)
 
     def test_agent_facing_cli_queries_are_bounded(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-query-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-query-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         long_query = "agent memory " + ("memory " * 200)
@@ -1505,7 +1505,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertLessEqual(len(json.loads(benchmark_out.getvalue())["query"]), 500)
 
     def test_graph_summary_reports_bounded_context(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-graph-summary-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-graph-summary-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1520,7 +1520,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("agent-memory", {node["id"] for node in payload["nodes"]})
 
     def test_benchmark_reports_local_query_timings(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-benchmark-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-benchmark-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1567,7 +1567,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Health: Ready for interactive local agent memory.", text_out.getvalue())
 
     def test_brief_surfaces_saved_captures_without_secret_values(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         fake_key = "sk-" + ("F" * 24)
@@ -1602,7 +1602,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn(fake_key, text_out.getvalue())
 
     def test_memory_audit_reports_backlog_without_secret_values(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         fake_key = "sk-" + ("G" * 24)
@@ -1638,7 +1638,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn(fake_key, text_out.getvalue())
 
     def test_capture_session_writes_raw_note_and_proposes_only(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         before_memories = list((target / "wiki/memories").glob("*.md"))
@@ -1672,7 +1672,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("capture-session", log_text)
 
     def test_session_end_writes_proposal_only_capture(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-session-end-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-session-end-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         before_memories = list((target / "wiki/memories").glob("*.md"))
@@ -1704,7 +1704,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("remember-memory", log_text)
 
     def test_capture_inbox_lists_captures_without_secret_values(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         fake_key = "sk-" + ("E" * 24)
@@ -1756,7 +1756,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn(fake_key, text)
 
     def test_capture_inbox_reports_unreadable_captures(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         capture_dir = target / "raw" / "memory-captures"
@@ -1802,7 +1802,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("locked.md", text)
 
     def test_accept_capture_writes_approved_proposal(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1850,7 +1850,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(recall["memories"][0]["project"], "link")
 
     def test_redact_capture_replaces_secret_like_values(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         fake_key = "sk-" + ("B" * 24)
@@ -1881,7 +1881,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn(fake_key, log_text)
 
     def test_delete_capture_requires_confirmation_and_removes_file(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1917,7 +1917,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("raw capture deletion requires confirmation", log_text)
 
     def test_memory_inbox_and_review_memory(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -1968,7 +1968,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(clear["review_count"], 0)
 
     def test_memory_inbox_filters_by_project(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -2011,7 +2011,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("Beta design context", inbox_out.getvalue())
 
     def test_explain_memory_reports_trust_state_and_graph(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2032,7 +2032,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Prefer local personal memory", payload["body"])
 
     def test_explain_memory_ready_after_review_and_disabled_after_archive(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         with redirect_stdout(StringIO()):
@@ -2057,7 +2057,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(archived["lifecycle"]["status"], "archived")
 
     def test_reviewed_memory_with_quality_issue_stays_in_inbox(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         memory_path = target / "wiki/memories/prefer-local-personal-memory.md"
@@ -2077,7 +2077,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(inbox["items"][0]["issues"][0]["code"], "missing_source")
 
     def test_archive_memory_hides_from_default_recall_and_restore_reenables(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2135,7 +2135,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Prefer local personal memory", out.getvalue())
 
     def test_forget_memory_requires_confirmation_and_deletes_page(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         memory_path = target / "wiki/memories/prefer-local-personal-memory.md"
@@ -2165,7 +2165,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("local personal memory for agents", log_text)
 
     def test_archive_memory_json_not_found(self):
-        tmp = Path(tempfile.mkdtemp(prefix="brainhub-memory-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-memory-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2177,7 +2177,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("memory not found", err.getvalue())
 
     def test_verify_mcp_ready(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-verify-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2195,7 +2195,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Result: ready", out.getvalue())
 
     def test_verify_mcp_uses_installer_python_marker(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-verify-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / ".brainhub-mcp-python").write_text("/tmp/brainhub-mcp-venv/bin/python\n", encoding="utf-8")
@@ -2213,7 +2213,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn('"command": "/tmp/brainhub-mcp-venv/bin/python"', out.getvalue())
 
     def test_verify_mcp_explicit_python_overrides_marker(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-verify-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / ".brainhub-mcp-python").write_text("/tmp/brainhub-mcp-venv/bin/python\n", encoding="utf-8")
@@ -2232,7 +2232,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(checked, ["/tmp/explicit-python"])
 
     def test_verify_mcp_json(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-verify-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2257,7 +2257,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertEqual(data["config"]["mcpServers"]["link"]["command"], "/tmp/python")
 
     def test_verify_mcp_json_reports_repair_actions(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-verify-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2302,7 +2302,7 @@ class LinkCliTests(unittest.TestCase):
         )
 
     def test_verify_mcp_json_reports_missing_wiki_action(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-verify-test-")))
         target = tmp / "empty"
         target.mkdir()
 
@@ -2348,7 +2348,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("mcp.server.fastmcp", run.call_args.args[0][2])
 
     def test_verify_mcp_reports_version_mismatch(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-verify-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2375,7 +2375,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn(expected, text)
 
     def test_verify_mcp_reports_missing_mcp_sdk_dependency(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-verify-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2400,7 +2400,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn(f"/tmp/python -m pip install --upgrade brainhub-mcp=={engine_cli.BRAINHUB_VERSION}", text)
 
     def test_verify_mcp_reports_missing_package(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-verify-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2417,7 +2417,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("/tmp/python -m pip install --upgrade brainhub-mcp", out.getvalue())
 
     def test_verify_mcp_reports_missing_wiki(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-verify-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-verify-test-")))
         target = tmp / "empty"
         target.mkdir()
 
@@ -2434,7 +2434,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("python3 brainhub_engine.py init", out.getvalue())
 
     def test_doctor_reports_dead_links(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         page = target / "wiki/concepts/agent-memory.md"
@@ -2448,7 +2448,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("dead wikilinks", out.getvalue())
 
     def test_doctor_reports_stale_backlinks(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         backlinks_path = target / "wiki/_backlinks.json"
@@ -2462,7 +2462,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("stale", out.getvalue())
 
     def test_rebuild_backlinks_repairs_stale_index(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         backlinks_path = target / "wiki/_backlinks.json"
@@ -2480,7 +2480,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("agent-memory", rebuilt["backlinks"])
 
     def test_rebuild_backlinks_reports_unreadable_pages(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         locked = target / "wiki/concepts/locked-page.md"
@@ -2501,7 +2501,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Could not rebuild backlinks", err.getvalue())
 
     def test_rebuild_index_repairs_missing_catalog_entries(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-index-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-index-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         index_path = target / "wiki/index.md"
@@ -2524,7 +2524,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("[[prefer-local-personal-memory]]", index_text)
 
     def test_rebuild_index_reports_unreadable_pages(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-index-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-index-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         locked = target / "wiki/concepts/locked-page.md"
@@ -2545,7 +2545,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Could not rebuild index", err.getvalue())
 
     def test_doctor_fix_repairs_stale_backlinks(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         backlinks_path = target / "wiki/_backlinks.json"
@@ -2562,7 +2562,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("agent-memory", rebuilt["backlinks"])
 
     def test_doctor_fix_repairs_index_drift(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         index_path = target / "wiki/index.md"
@@ -2581,7 +2581,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("agent-memory", backlinks["backlinks"])
 
     def test_doctor_fix_creates_missing_structure(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "empty"
         target.mkdir()
 
@@ -2602,7 +2602,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Result: healthy", out.getvalue())
 
     def test_doctor_fix_does_not_hide_content_errors(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         page = target / "wiki/concepts/agent-memory.md"
@@ -2616,7 +2616,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("dead wikilinks", out.getvalue())
 
     def test_doctor_reports_validation_errors(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         page = target / "wiki/sources/agent-memory-session.md"
@@ -2636,7 +2636,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("missing_required_section", out.getvalue())
 
     def test_doctor_fix_repairs_source_page_validation_shape(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         page = target / "wiki/sources/agent-memory-session.md"
@@ -2664,7 +2664,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("`raw/agent-memory-session.md`", repaired_text)
 
     def test_doctor_labels_stale_raw_as_source_refresh(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         raw_page = target / "raw/agent-memory-session.md"
@@ -2682,7 +2682,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertNotIn("raw files not referenced by wiki source pages", text)
 
     def test_doctor_warns_on_missing_summary(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         page = target / "wiki/concepts/agent-memory.md"
@@ -2699,7 +2699,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("pages missing TLDR/query summary", out.getvalue())
 
     def test_doctor_fails_on_secret_like_content(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         fake_key = "AKIA" + ("A" * 16)
@@ -2713,7 +2713,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("sensitive-looking file contents", out.getvalue())
 
     def test_doctor_fails_when_secret_scan_cannot_read_file(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         locked = target / "raw/locked.md"
@@ -2735,7 +2735,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("raw/locked.md", out.getvalue())
 
     def test_doctor_fails_on_google_api_key_content(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         fake_key = "AIza" + ("A" * 35)
@@ -2749,7 +2749,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("Google API key", out.getvalue())
 
     def test_doctor_fails_on_sensitive_filename(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / ".env.local").write_text("placeholder=true\n", encoding="utf-8")
@@ -2762,7 +2762,7 @@ class LinkCliTests(unittest.TestCase):
         self.assertIn("sensitive-looking filenames", out.getvalue())
 
     def test_doctor_fails_on_service_account_filename(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-doctor-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-doctor-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         (target / "raw/service-account-prod.json").write_text("{}", encoding="utf-8")
@@ -2780,7 +2780,7 @@ class AgentHookCliTests(unittest.TestCase):
         return StringIO(json.dumps(payload))
 
     def test_hook_session_start_prints_memory_brief(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2796,7 +2796,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertIn("Save durable memory only after explicit user approval.", text)
 
     def test_hook_session_start_empty_workspace_is_compact(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "empty"
         with redirect_stdout(StringIO()):
             engine_cli.init_wiki(target)
@@ -2813,7 +2813,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertLess(len(text.splitlines()), 6)
 
     def test_missing_wiki_error_points_to_next_step(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
 
         err = StringIO()
         with redirect_stderr(err):
@@ -2824,7 +2824,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertIn("init", err.getvalue())
 
     def test_hook_session_start_missing_wiki_exits_zero_with_guidance(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "missing"
 
         out = StringIO()
@@ -2836,7 +2836,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertIn("wiki missing", out.getvalue())
 
     def test_hook_session_end_captures_proposal_only_notes(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         transcript = tmp / "transcript.jsonl"
@@ -2865,7 +2865,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertIn("proposal-only", out.getvalue())
 
     def test_hook_session_start_cursor_emit_wraps_additional_context(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -2879,7 +2879,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertIn("BrainHub memory (local, source-backed)", payload["additional_context"])
 
     def test_hook_session_end_skips_duplicate_transcript_content(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         transcript = tmp / "transcript.jsonl"
@@ -2908,7 +2908,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertEqual(len(captures), 1)
 
     def test_hook_session_end_skips_sessions_without_memory_proposals(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         transcript = tmp / "transcript.jsonl"
@@ -2939,7 +2939,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertEqual(captures, [])
 
     def test_consolidate_prints_read_only_plan(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         transcript = tmp / "transcript.jsonl"
@@ -2972,7 +2972,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertTrue(payload["captures"][0]["delete_command"])
 
     def test_hook_session_end_ignores_assistant_prose(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-assistant-prose-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-assistant-prose-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         transcript = tmp / "transcript.jsonl"
@@ -2999,7 +2999,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertEqual(captures, [], "assistant prose must not become a capture")
 
     def test_hook_session_end_captures_user_stated_decision(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-user-decision-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-user-decision-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         transcript = tmp / "transcript.jsonl"
@@ -3025,7 +3025,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertEqual(len(captures), 1, "a user-stated decision should be captured")
 
     def test_hook_session_end_skips_trivial_sessions(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         transcript = tmp / "transcript.jsonl"
@@ -3044,7 +3044,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertEqual(captures, [])
 
     def test_hook_session_end_without_stdin_payload_is_noop(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -3054,7 +3054,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertEqual(code, 0)
 
     def test_connect_hooks_rejects_unsupported_agent(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -3066,7 +3066,7 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertIn("--hooks is not supported for kiro", err.getvalue())
 
     def test_connect_hooks_preview_includes_session_hooks_payload(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-hook-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-hook-test-")))
         target = tmp / "demo"
         create_demo_quiet(target)
 
@@ -3082,14 +3082,14 @@ class AgentHookCliTests(unittest.TestCase):
         self.assertIn(" hook session-start ", session_hooks["events"]["SessionStart"])
         # The command must point at the demo's own runtime script. Compare the
         # stable path tail: on Windows the temp dir in the command is resolved
-        # to its long form (runneradmin) while mkdtemp returns the 8.3 short
+        # to its long form (runneradmin) while the temp dir is created with the 8.3 short
         # form (RUNNER~1), so the absolute prefix differs.
         self.assertIn(str(Path(target.name) / "brainhub_engine.py"), session_hooks["events"]["SessionStart"])
 
 
 class NewUserFrictionTests(unittest.TestCase):
     def test_recall_miss_hints_at_semantic_when_memories_exist(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-miss-hint-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-miss-hint-")))
         target = tmp / "wiki-root"
         with redirect_stdout(StringIO()):
             engine_cli.init_wiki(target)
@@ -3108,7 +3108,7 @@ class NewUserFrictionTests(unittest.TestCase):
         self.assertIn("--setup", text)
 
     def test_recall_miss_on_empty_wiki_gives_no_semantic_hint(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-miss-empty-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-miss-empty-")))
         target = tmp / "wiki-root"
         with redirect_stdout(StringIO()):
             engine_cli.init_wiki(target)
@@ -3122,7 +3122,7 @@ class NewUserFrictionTests(unittest.TestCase):
         self.assertNotIn("semantic recall", out.getvalue().lower())
 
     def test_onboard_surfaces_the_hooks_path(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-onboard-hooks-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-onboard-hooks-")))
         target = tmp / "link"
 
         out = StringIO()
@@ -3135,7 +3135,7 @@ class NewUserFrictionTests(unittest.TestCase):
         self.assertIn("--hooks", text)
 
     def test_onboard_agent_preview_offers_hooks(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-onboard-agent-hooks-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-onboard-agent-hooks-")))
         target = tmp / "link"
 
         out = StringIO()

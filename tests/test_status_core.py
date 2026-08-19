@@ -24,7 +24,7 @@ def write_page(wiki: Path, rel: str, text: str) -> None:
 
 class StatusCoreTests(unittest.TestCase):
     def make_wiki(self) -> Path:
-        root = Path(tempfile.mkdtemp(prefix="link-status-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-status-core-")))
         wiki = root / "wiki"
         for dirname in ("sources", "concepts", "entities", "memories", "comparisons", "explorations"):
             (wiki / dirname).mkdir(parents=True, exist_ok=True)
@@ -84,7 +84,7 @@ class StatusCoreTests(unittest.TestCase):
         self.assertEqual(payload["next_actions"][0]["tool"], "bh_search")
 
     def test_link_status_reports_missing_structure(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-status-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-status-core-"))) / "wiki"
 
         payload = link_status(wiki, include_validation=True)
 
@@ -96,7 +96,7 @@ class StatusCoreTests(unittest.TestCase):
         self.assertEqual(payload["next_actions"][0]["tool"], "doctor")
 
     def test_link_status_guides_empty_initialized_wiki_to_project_seed(self):
-        root = Path(tempfile.mkdtemp(prefix="link-status-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-status-core-")))
         wiki = root / "wiki"
         for dirname in ("sources", "concepts", "entities", "memories", "comparisons", "explorations"):
             (wiki / dirname).mkdir(parents=True, exist_ok=True)

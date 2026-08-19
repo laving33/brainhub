@@ -13,7 +13,7 @@ from brainhub_core.schema import CURRENT_SCHEMA_VERSION, migrate_wiki, schema_st
 
 class SchemaCoreTests(unittest.TestCase):
     def test_missing_schema_needs_migration(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-schema-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-schema-core-"))) / "wiki"
 
         status = schema_status(wiki)
 
@@ -22,7 +22,7 @@ class SchemaCoreTests(unittest.TestCase):
         self.assertEqual(status["current_version"], CURRENT_SCHEMA_VERSION)
 
     def test_migrate_wiki_writes_marker_and_directories(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-schema-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-schema-core-"))) / "wiki"
 
         result = migrate_wiki(wiki)
 
@@ -33,7 +33,7 @@ class SchemaCoreTests(unittest.TestCase):
         self.assertEqual(schema_status(wiki)["status"], "current")
 
     def test_migrate_aged_schema_fixture_preserves_existing_pages(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-schema-aged-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-schema-aged-"))) / "wiki"
         (wiki / "sources").mkdir(parents=True)
         (wiki / "concepts").mkdir()
         (wiki / "sources" / "release-notes.md").write_text(
@@ -62,7 +62,7 @@ class SchemaCoreTests(unittest.TestCase):
         self.assertEqual(schema_status(wiki)["status"], "current")
 
     def test_migrate_wiki_is_idempotent(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-schema-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-schema-core-"))) / "wiki"
         migrate_wiki(wiki)
 
         result = migrate_wiki(wiki)
@@ -72,7 +72,7 @@ class SchemaCoreTests(unittest.TestCase):
         self.assertEqual(result["changes"], [])
 
     def test_migrate_wiki_refuses_newer_schema(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-schema-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-schema-core-"))) / "wiki"
         wiki.mkdir()
         (wiki / "_brainhub_schema.json").write_text(
             json.dumps({"schema": "brainhub-wiki", "version": CURRENT_SCHEMA_VERSION + 1}),
@@ -87,7 +87,7 @@ class SchemaCoreTests(unittest.TestCase):
         self.assertIn("newer than this runtime", result["error"])
 
     def test_migrate_wiki_refuses_invalid_schema(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-schema-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-schema-core-"))) / "wiki"
         wiki.mkdir()
         (wiki / "_brainhub_schema.json").write_text("{not-json", encoding="utf-8")
 
@@ -99,7 +99,7 @@ class SchemaCoreTests(unittest.TestCase):
         self.assertIn("invalid schema marker", result["error"])
 
     def test_schema_status_rejects_wrong_schema_name(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-schema-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-schema-core-"))) / "wiki"
         wiki.mkdir()
         (wiki / "_brainhub_schema.json").write_text(
             json.dumps({"schema": "other-wiki", "version": CURRENT_SCHEMA_VERSION}),
@@ -112,7 +112,7 @@ class SchemaCoreTests(unittest.TestCase):
         self.assertIn("schema must be", status["error"])
 
     def test_write_schema_records_current_version(self):
-        wiki = Path(tempfile.mkdtemp(prefix="link-schema-core-")) / "wiki"
+        wiki = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-schema-core-"))) / "wiki"
 
         payload = write_schema(wiki)
 

@@ -154,7 +154,7 @@ def post_json(path: str, payload: dict[str, object], local_action: bool = True):
 
 class ServeTests(unittest.TestCase):
     def make_wiki(self) -> Path:
-        tmp = Path(tempfile.mkdtemp(prefix="link-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-test-")))
         wiki = tmp / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")
@@ -2959,7 +2959,7 @@ class RelatedPagesBudgetTests(unittest.TestCase):
         # Deliberately NOT inheriting ServeTests: subclassing a TestCase re-runs
         # every one of its methods under this class too (it inflated the suite by
         # 119 duplicates when first written). One helper is cheaper than that.
-        tmp = Path(tempfile.mkdtemp(prefix="related-test-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="related-test-")))
         wiki = tmp / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")

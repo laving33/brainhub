@@ -53,7 +53,7 @@ class CaptureCoreTests(unittest.TestCase):
         )
 
     def test_capture_filename_is_unique_and_slugged(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-filename-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-filename-")))
         first = capture_filename("2026-05-06T01:02:03Z", "Memory capture: First Memory", root)
         first.write_text("# first\n", encoding="utf-8")
         second = capture_filename("2026-05-06T01:02:03Z", "Memory capture: First Memory", root)
@@ -62,7 +62,7 @@ class CaptureCoreTests(unittest.TestCase):
         self.assertEqual(second.name, "20260506T010203Z-first-memory-2.md")
 
     def test_write_session_capture_persists_proposal_only_markdown(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-write-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-write-")))
 
         payload = write_session_capture(
             root,
@@ -85,13 +85,13 @@ class CaptureCoreTests(unittest.TestCase):
         self.assertIn("## Notes\n\nRemember that Link uses local markdown memory.", text)
 
     def test_write_session_capture_rejects_empty_notes(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-write-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-write-")))
 
         with self.assertRaises(ValueError):
             write_session_capture(root, text="   ", source="inline")
 
     def test_resolve_capture_file_accepts_supported_root_relative_forms(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-core-")))
         capture_dir = root / "raw" / "memory-captures"
         capture_dir.mkdir(parents=True)
         capture = capture_dir / "session.md"
@@ -102,8 +102,8 @@ class CaptureCoreTests(unittest.TestCase):
         self.assertEqual(resolve_capture_file(root, "session"), capture.resolve())
 
     def test_resolve_capture_file_rejects_paths_outside_root(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-core-"))
-        outside = Path(tempfile.mkdtemp(prefix="link-capture-outside-")) / "session.md"
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-core-")))
+        outside = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-outside-"))) / "session.md"
         outside.write_text("# Outside\n", encoding="utf-8")
         capture_dir = root / "raw" / "memory-captures"
         capture_dir.mkdir(parents=True)
@@ -134,7 +134,7 @@ class CaptureCoreTests(unittest.TestCase):
         self.assertEqual(notes, "Important memory candidate.")
 
     def test_capture_proposal_selection_reads_capture_and_selects_index(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-selection-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-selection-")))
         capture_dir = root / "raw" / "memory-captures"
         capture_dir.mkdir(parents=True)
         (capture_dir / "session.md").write_text(
@@ -223,7 +223,7 @@ class CaptureCoreTests(unittest.TestCase):
         self.assertEqual(args["project"], "")
 
     def test_capture_proposal_selection_validates_index_and_notes(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-selection-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-selection-")))
         capture_dir = root / "raw" / "memory-captures"
         capture_dir.mkdir(parents=True)
         (capture_dir / "empty.md").write_text("", encoding="utf-8")
@@ -239,7 +239,7 @@ class CaptureCoreTests(unittest.TestCase):
             capture_proposal_selection(root, "missing", index=1, propose_memories=propose)
 
     def test_redact_capture_file_redacts_and_reports_labels(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-redact-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-redact-")))
         capture_dir = root / "raw" / "memory-captures"
         capture_dir.mkdir(parents=True)
         fake_key = "sk-" + "a" * 48
@@ -256,7 +256,7 @@ class CaptureCoreTests(unittest.TestCase):
         self.assertIn("[gone]", capture.read_text(encoding="utf-8"))
 
     def test_redact_capture_file_reports_noop_without_rewriting(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-redact-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-redact-")))
         capture_dir = root / "raw" / "memory-captures"
         capture_dir.mkdir(parents=True)
         capture = capture_dir / "session.md"
@@ -270,7 +270,7 @@ class CaptureCoreTests(unittest.TestCase):
         self.assertEqual(capture.read_text(encoding="utf-8"), "## Notes\n\nNo secrets here.\n")
 
     def test_delete_capture_file_requires_confirmation(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-delete-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-delete-")))
         capture_dir = root / "raw" / "memory-captures"
         capture_dir.mkdir(parents=True)
         capture = capture_dir / "session.md"
@@ -289,7 +289,7 @@ class CaptureCoreTests(unittest.TestCase):
         self.assertFalse(capture.exists())
 
     def test_capture_mutation_helpers_reject_missing_capture(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-missing-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-missing-")))
 
         with self.assertRaisesRegex(ValueError, "capture not found"):
             redact_capture_file(root, "missing")
@@ -297,7 +297,7 @@ class CaptureCoreTests(unittest.TestCase):
             delete_capture_file(root, "missing", confirm=True)
 
     def test_capture_records_redact_snippets_and_filter_project(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-core-")))
         capture_dir = root / "raw" / "memory-captures"
         capture_dir.mkdir(parents=True)
         fake_key = "sk-" + "a" * 48
@@ -337,7 +337,7 @@ class CaptureCoreTests(unittest.TestCase):
         self.assertEqual(inbox["project"], "alpha")
 
     def test_capture_inbox_reports_unreadable_captures(self):
-        root = Path(tempfile.mkdtemp(prefix="link-capture-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-capture-core-")))
         capture_dir = root / "raw" / "memory-captures"
         capture_dir.mkdir(parents=True)
         (capture_dir / "good.md").write_text(

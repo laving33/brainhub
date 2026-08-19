@@ -16,7 +16,7 @@ from brainhub_core.wiki import build_backlinks  # noqa: E402
 
 class AuditExportCoreTests(unittest.TestCase):
     def make_wiki(self) -> Path:
-        root = Path(tempfile.mkdtemp(prefix="link-audit-export-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-audit-export-")))
         wiki = root / "wiki"
         migrate_wiki(wiki)
         (wiki / "index.md").write_text("# Index\n", encoding="utf-8")

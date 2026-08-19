@@ -49,7 +49,7 @@ def _write_pack(root: Path, *, tokens: bool = True, logo: bool = True, fonts: bo
 
 class BrandPackResolutionTests(unittest.TestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.mkdtemp(prefix="brainhub-brand-pack-")
+        self._tmp = self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-brand-pack-"))
         self.addCleanup(lambda: __import__("shutil").rmtree(self._tmp, ignore_errors=True))
         self.root = Path(self._tmp)
 
@@ -121,7 +121,7 @@ class BrandPackReachesTheOutputTests(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        self._tmp = tempfile.mkdtemp(prefix="brainhub-brand-out-")
+        self._tmp = self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-brand-out-"))
         self.addCleanup(lambda: __import__("shutil").rmtree(self._tmp, ignore_errors=True))
         self.pack = _write_pack(Path(self._tmp))
 
@@ -177,7 +177,7 @@ class EveryRendererHonoursTheBrandPackTests(unittest.TestCase):
         return registry.get(kind).example
 
     def setUp(self) -> None:
-        self._tmp = tempfile.mkdtemp(prefix="brainhub-brand-renderers-")
+        self._tmp = self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-brand-renderers-"))
         self.addCleanup(lambda: __import__("shutil").rmtree(self._tmp, ignore_errors=True))
         self.pack = _write_pack(Path(self._tmp))
 

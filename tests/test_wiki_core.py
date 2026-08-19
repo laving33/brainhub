@@ -39,7 +39,7 @@ def write_page(wiki: Path, rel: str, text: str) -> Path:
 
 class WikiCoreTests(unittest.TestCase):
     def make_wiki(self) -> Path:
-        root = Path(tempfile.mkdtemp(prefix="link-wiki-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-wiki-core-")))
         wiki = root / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")
@@ -232,7 +232,7 @@ class WikiCoreTests(unittest.TestCase):
         self.assertIn("new context", cache["fulltext"]["agent-memory"])
 
     def test_build_wiki_cache_does_not_create_persistent_cache_for_missing_wiki(self):
-        root = Path(tempfile.mkdtemp(prefix="link-wiki-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-wiki-core-")))
         wiki = root / "missing-wiki"
 
         cache = build_wiki_cache(wiki)

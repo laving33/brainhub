@@ -23,7 +23,7 @@ def write_page(wiki: Path, rel: str, text: str) -> None:
 
 class IngestCoreTests(unittest.TestCase):
     def test_collect_ingest_status_reports_missing_structure(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-ingest-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-core-")))
 
         payload = collect_ingest_status(root)
         text = render_ingest_status_text(str(root), payload)
@@ -35,7 +35,7 @@ class IngestCoreTests(unittest.TestCase):
         self.assertIn("Run an installer or initialize this directory: bh init", text)
 
     def test_collect_ingest_status_reports_pending_raw(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-ingest-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-core-")))
         raw = root / "raw"
         wiki = root / "wiki"
         raw.mkdir()
@@ -84,7 +84,7 @@ class IngestCoreTests(unittest.TestCase):
         self.assertEqual(findings["blocked"], ["raw/blocked.md", "raw/unreadable.md"])
 
     def test_collect_ingest_status_blocks_secret_looking_raw(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-ingest-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-core-")))
         raw = root / "raw"
         wiki = root / "wiki"
         raw.mkdir()
@@ -114,7 +114,7 @@ class IngestCoreTests(unittest.TestCase):
         self.assertIn("Do not ask an agent to ingest", payload["guidance"]["notes"][0])
 
     def test_collect_ingest_status_blocks_unreadable_raw(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-ingest-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-core-")))
         raw = root / "raw"
         wiki = root / "wiki"
         raw.mkdir()
@@ -144,7 +144,7 @@ class IngestCoreTests(unittest.TestCase):
         self.assertIn("cannot read and scan", payload["guidance"]["notes"][0])
 
     def test_collect_ingest_status_blocks_unreadable_source_pages(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-ingest-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-core-")))
         raw = root / "raw"
         wiki = root / "wiki"
         raw.mkdir()
@@ -177,7 +177,7 @@ class IngestCoreTests(unittest.TestCase):
         self.assertIn("Represented and pending raw counts may be incomplete", payload["guidance"]["notes"][0])
 
     def test_collect_ingest_status_reports_represented_raw(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-ingest-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-core-")))
         raw = root / "raw"
         wiki = root / "wiki"
         raw.mkdir()
@@ -211,7 +211,7 @@ class IngestCoreTests(unittest.TestCase):
         self.assertEqual(payload["completion"]["next_prompt"], "start with BrainHub before we continue")
 
     def test_collect_ingest_status_reports_stale_represented_raw(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-ingest-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-core-")))
         raw = root / "raw"
         wiki = root / "wiki"
         raw.mkdir()
@@ -277,7 +277,7 @@ class IngestCoreTests(unittest.TestCase):
         self.assertEqual(matches["raw/d.md"], ["alpha"])
 
     def test_collect_ingest_status_warns_on_represented_secret_raw(self):
-        root = Path(tempfile.mkdtemp(prefix="brainhub-ingest-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-ingest-core-")))
         raw = root / "raw"
         wiki = root / "wiki"
         raw.mkdir()

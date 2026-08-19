@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+### Fixed — the test suite now cleans up after itself
+
+281 tests created their scratch directory with `tempfile.mkdtemp()`, which has no
+owner: nothing closes it, no context manager ends its life, and the directory
+outlives the process that made it. One full run left 544 directories and 407 MB
+in `/tmp`.
+
+That is harmless once. On 2026-08-19 the suite ran roughly 64 times overnight on
+the development machine and left **34,858 directories and 27.5 GB** — enough to
+take that disk to 97% full, with a production control plane sharing it.
+
+Each of those sites now says `self.enterContext(tempfile.TemporaryDirectory(...))`,
+which ties the directory's life to the test's: it goes away when the test does,
+whether it passed, failed, or raised. The suite already knew this pattern — the
+`TemporaryDirectory()` call sites next door all pair with `addCleanup` — the
+`mkdtemp` calls were simply never brought along. Measured after: 1219 tests, one
+full run, **0 directories and 0 MB** left behind.
+
+`scripts/check_temp_hygiene.py` is a new CI gate so it cannot come back. Smoke
+and load scripts under `scripts/` keep their named work directories on purpose:
+an operator is meant to open those afterwards, and they are created once per
+invocation rather than once per test.
+
 ### Added — a portal may now frame the viewer, if you say so
 
 `BRAINHUB_FRAME_ANCESTORS` names the origins allowed to embed viewer pages and

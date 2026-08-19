@@ -137,7 +137,7 @@ class _IsolatedFontCache(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        self._cache_dir = tempfile.mkdtemp(prefix="brainhub-font-test-")
+        self._cache_dir = self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-font-test-"))
         self._real_cache = fonts._CASE_CACHE
         self._real_memo = fonts._case_memo
         fonts._CASE_CACHE = Path(self._cache_dir)

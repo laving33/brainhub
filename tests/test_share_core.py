@@ -7,7 +7,7 @@ from mcp_package.brainhub_core.share import render_share_text, share_page_payloa
 
 class ShareCoreTests(unittest.TestCase):
     def make_wiki(self) -> Path:
-        root = Path(tempfile.mkdtemp(prefix="link-share-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-share-core-")))
         wiki = root / "wiki"
         (wiki / "memories").mkdir(parents=True)
         (wiki / "concepts").mkdir(parents=True)

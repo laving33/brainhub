@@ -21,7 +21,7 @@ def write_page(wiki: Path, rel: str, text: str) -> None:
 
 class ValidationCoreTests(unittest.TestCase):
     def make_wiki(self) -> Path:
-        root = Path(tempfile.mkdtemp(prefix="link-validation-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-validation-core-")))
         wiki = root / "wiki"
         for dirname in ("sources", "concepts", "entities", "memories", "comparisons", "explorations"):
             (wiki / dirname).mkdir(parents=True, exist_ok=True)

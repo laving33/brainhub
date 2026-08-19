@@ -13,7 +13,7 @@ from mcp_package.brainhub_core.artifacts import (
 
 class ArtifactCatalogTests(unittest.TestCase):
     def test_catalog_derives_location_from_workspace_not_sidecar(self):
-        workspace = Path(tempfile.mkdtemp(prefix="brainhub-artifacts-"))
+        workspace = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-artifacts-")))
         self.addCleanup(lambda: __import__("shutil").rmtree(workspace, ignore_errors=True))
         artifact_dir = workspace / "artifacts/reports"
         artifact_dir.mkdir(parents=True)
@@ -46,7 +46,7 @@ class ArtifactStoreProblemTests(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        self.root = Path(tempfile.mkdtemp(prefix="brainhub-store-problem-"))
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="brainhub-store-problem-")))
         self.addCleanup(lambda: __import__("shutil").rmtree(self.root, ignore_errors=True))
 
     def test_no_problem_when_the_artifact_directory_exists(self):

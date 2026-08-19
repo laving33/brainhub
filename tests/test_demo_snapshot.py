@@ -84,7 +84,7 @@ def reset_serve_wiki(wiki_dir: Path) -> None:
 
 class DemoSnapshotTests(unittest.TestCase):
     def make_demo(self) -> Path:
-        tmp = Path(tempfile.mkdtemp(prefix="link-demo-snapshot-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-demo-snapshot-")))
         target = tmp / "demo"
         create_demo_quiet(target)
         return target

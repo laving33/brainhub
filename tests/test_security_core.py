@@ -88,7 +88,7 @@ class SecurityCoreTests(unittest.TestCase):
         self.assertEqual(secret_value_warnings(text), [])
 
     def test_secret_file_warnings_streams_across_chunks(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-security-core-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-security-core-")))
         fake_key = "sk-" + "a" * 48
         path = tmp / "large-ish-source.md"
         path.write_text("safe text\n" + ("x" * 40) + " " + fake_key + "\n", encoding="utf-8")
@@ -98,14 +98,14 @@ class SecurityCoreTests(unittest.TestCase):
         self.assertEqual(warnings, ["OpenAI API key"])
 
     def test_secret_file_warnings_handles_missing_file(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-security-core-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-security-core-")))
 
         warnings = secret_file_warnings(tmp / "missing.md")
 
         self.assertEqual(warnings, [])
 
     def test_sensitive_filename_scan_skips_configured_dirs(self):
-        root = Path(tempfile.mkdtemp(prefix="link-sensitive-name-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-sensitive-name-")))
         (root / "raw").mkdir()
         (root / "raw" / ".env").write_text("secret\n", encoding="utf-8")
         (root / ".git").mkdir()
@@ -120,7 +120,7 @@ class SecurityCoreTests(unittest.TestCase):
         self.assertEqual(matches, ["raw/.env"])
 
     def test_iter_scannable_files_skips_binary_suffixes(self):
-        root = Path(tempfile.mkdtemp(prefix="link-scannable-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-scannable-")))
         (root / "note.md").write_text("text\n", encoding="utf-8")
         (root / "image.png").write_bytes(b"png")
         (root / "node_modules").mkdir()
@@ -131,7 +131,7 @@ class SecurityCoreTests(unittest.TestCase):
         self.assertEqual([path.name for path in files], ["note.md"])
 
     def test_find_sensitive_values_reports_matches(self):
-        root = Path(tempfile.mkdtemp(prefix="link-sensitive-values-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-sensitive-values-")))
         fake_key = "sk-" + ("A" * 24)
         (root / "note.md").write_text(f"token {fake_key}\n", encoding="utf-8")
 

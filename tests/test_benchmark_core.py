@@ -19,7 +19,7 @@ from brainhub_core.demo import create_demo_workspace  # noqa: E402
 
 class BenchmarkCoreTests(unittest.TestCase):
     def test_build_benchmark_payload_times_demo_wiki(self):
-        tmp = Path(tempfile.mkdtemp(prefix="link-benchmark-core-"))
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-benchmark-core-")))
         target = tmp / "demo"
         create_demo_workspace(target, source_root=ROOT)
 

@@ -30,7 +30,7 @@ class QueryCoreTests(unittest.TestCase):
         self.assertEqual(normalize_budget(None), "medium")
 
     def test_query_link_returns_budgeted_memory_and_graph_context(self):
-        root = Path(tempfile.mkdtemp(prefix="link-query-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-query-core-")))
         wiki = root / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")
@@ -118,7 +118,7 @@ class QueryCoreTests(unittest.TestCase):
         self.assertEqual(payload["follow_up"][0]["arguments"], {"action": "context", "topic": "agent-memory"})
 
     def test_query_link_flags_weak_only_memory_matches(self):
-        root = Path(tempfile.mkdtemp(prefix="link-query-weak-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-query-weak-")))
         wiki = root / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")
@@ -159,7 +159,7 @@ class QueryCoreTests(unittest.TestCase):
         )
 
     def test_micro_budget_returns_tiny_recall_capsule(self):
-        root = Path(tempfile.mkdtemp(prefix="link-query-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-query-core-")))
         wiki = root / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")
@@ -214,7 +214,7 @@ class QueryCoreTests(unittest.TestCase):
         self.assertIn("rank_signals", payload["recall_capsule"]["items"][0])
 
     def test_query_link_reports_budget_overflow_and_followups(self):
-        root = Path(tempfile.mkdtemp(prefix="link-query-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-query-core-")))
         wiki = root / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")
@@ -271,7 +271,7 @@ class QueryCoreTests(unittest.TestCase):
         self.assertIn("budget-limited", payload["agent_guidance"][1])
 
     def test_large_budget_followup_does_not_repeat_large_budget(self):
-        root = Path(tempfile.mkdtemp(prefix="link-query-core-"))
+        root = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="link-query-core-")))
         wiki = root / "wiki"
         wiki.mkdir()
         write_page(wiki, "index.md", "# Index\n")

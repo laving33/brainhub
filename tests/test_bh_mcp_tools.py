@@ -124,7 +124,7 @@ LINE_SPEC = {
 
 class BhMcpToolTests(unittest.TestCase):
     def setUp(self):
-        self._tmp = Path(tempfile.mkdtemp(prefix="bh-mcp-tools-"))
+        self._tmp = Path(self.enterContext(tempfile.TemporaryDirectory(prefix="bh-mcp-tools-")))
         self.workspace = self._tmp / "brainhub"
         with redirect_stdout(StringIO()):
             self.assertEqual(brainhub.main(["init", str(self.workspace)]), 0)
